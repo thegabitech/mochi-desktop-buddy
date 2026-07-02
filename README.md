@@ -4,6 +4,14 @@ A small desktop companion cat you can publish for real. This is the **rebranded,
 fully original, 100% offline** sibling of the `pusheen-app` fan project one
 folder up — built specifically to be shareable without any IP concerns.
 
+**v1.3.0:** visual polish pass — Mochi now has a soft belly highlight, a
+subtle head-shine gradient, and sparkle dots in her eyes for a rounder,
+plusher, more expressive look (same original design: cream/caramel calico,
+no stripes, solid tail — just executed with more depth and finish). Outline
+color deepened slightly for better contrast. The burger menu also went from
+a faint 55%-opacity fade to a solid, bordered, drop-shadowed button so it's
+easy to spot against any desktop background.
+
 **v1.2.0:** simplified down to one window and one experience. The app now
 opens straight into **Walking** mode (no separate widget/tray dance needed
 to see her), with a small **☰ burger menu** on the overlay itself to switch
