@@ -45,12 +45,18 @@ const MOCHI_SVG = `
     </g>
 
     <g class="mochi-eye-open l">
-      <ellipse cx="110" cy="134" rx="11" ry="14" fill="#3f2f22"/>
-      <ellipse cx="107" cy="128" rx="3" ry="4" fill="#fff" opacity=".9"/>
+      <ellipse cx="110" cy="134" rx="14" ry="17" fill="#fff"/>
+      <g class="mochi-pupil">
+        <ellipse cx="112" cy="136" rx="9" ry="12" fill="#3f2f22"/>
+        <ellipse cx="109" cy="130" rx="3" ry="4" fill="#fff" opacity=".95"/>
+      </g>
     </g>
     <g class="mochi-eye-open r">
-      <ellipse cx="168" cy="134" rx="11" ry="14" fill="#3f2f22"/>
-      <ellipse cx="165" cy="128" rx="3" ry="4" fill="#fff" opacity=".9"/>
+      <ellipse cx="168" cy="134" rx="14" ry="17" fill="#fff"/>
+      <g class="mochi-pupil">
+        <ellipse cx="170" cy="136" rx="9" ry="12" fill="#3f2f22"/>
+        <ellipse cx="167" cy="130" rx="3" ry="4" fill="#fff" opacity=".95"/>
+      </g>
     </g>
     <path class="mochi-eye-closed l" d="M98 135 q12 10 24 0" stroke="#3f2f22" stroke-width="4.5" stroke-linecap="round" fill="none"/>
     <path class="mochi-eye-closed r" d="M156 135 q12 10 24 0" stroke="#3f2f22" stroke-width="4.5" stroke-linecap="round" fill="none"/>
@@ -125,13 +131,27 @@ const MOCHI_SVG = `
   </g>
 
   <g class="mochi-balloons" transform="translate(158,60)">
-    <line x1="-4" y1="18" x2="-30" y2="70" stroke="#6b4a34" stroke-width="2.5"/>
-    <line x1="4" y1="18" x2="6" y2="72" stroke="#6b4a34" stroke-width="2.5"/>
-    <line x1="12" y1="18" x2="34" y2="70" stroke="#6b4a34" stroke-width="2.5"/>
-    <g class="mochi-balloon b1"><ellipse cx="-30" cy="0" rx="20" ry="24" fill="#f7b0c6" stroke="#6b4a34" stroke-width="3"/></g>
-    <g class="mochi-balloon b2"><ellipse cx="6" cy="-16" rx="22" ry="26" fill="#a9d4ff" stroke="#6b4a34" stroke-width="3"/></g>
-    <g class="mochi-balloon b3"><ellipse cx="34" cy="0" rx="20" ry="24" fill="#c9f0c0" stroke="#6b4a34" stroke-width="3"/></g>
+    <line class="mochi-string b1" x1="-4" y1="18" x2="-30" y2="70" stroke="#6b4a34" stroke-width="2.5"/>
+    <line class="mochi-string b2" x1="4" y1="18" x2="6" y2="72" stroke="#6b4a34" stroke-width="2.5"/>
+    <line class="mochi-string b3" x1="12" y1="18" x2="34" y2="70" stroke="#6b4a34" stroke-width="2.5"/>
+    <g class="mochi-balloon b1" data-balloon="b1"><ellipse cx="-30" cy="0" rx="24" ry="28" fill="#f7b0c6" stroke="#6b4a34" stroke-width="3"/></g>
+    <g class="mochi-balloon b2" data-balloon="b2"><ellipse cx="6" cy="-16" rx="26" ry="30" fill="#a9d4ff" stroke="#6b4a34" stroke-width="3"/></g>
+    <g class="mochi-balloon b3" data-balloon="b3"><ellipse cx="34" cy="0" rx="24" ry="28" fill="#c9f0c0" stroke="#6b4a34" stroke-width="3"/></g>
   </g>
+
+  <g class="mochi-wings">
+    <path class="mochi-wing l" d="M110 150 Q40 130 30 90 Q80 96 118 138 Z" fill="#fff" stroke="#6b4a34" stroke-width="6" stroke-linejoin="round"/>
+    <path class="mochi-wing r" d="M206 150 Q276 130 286 90 Q236 96 198 138 Z" fill="#fff" stroke="#6b4a34" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+
+  <g class="mochi-plane" transform="translate(158,232)">
+    <path d="M-70 6 L60 6 L84 -8 L60 -6 L-70 -6 Z" fill="#a9d4ff" stroke="#6b4a34" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M-20 -6 L4 -34 L20 -34 L4 -6 Z" fill="#f7e8d6" stroke="#6b4a34" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M-30 6 L-14 26 L2 26 L-10 6 Z" fill="#f7e8d6" stroke="#6b4a34" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="46" cy="-1" r="5" fill="#fff"/>
+  </g>
+
+  <g class="mochi-pop-burst"></g>
 
   <g class="mochi-toy" transform="translate(46,236)">
     <g class="mochi-toy-inner">
@@ -195,6 +215,36 @@ class MochiSprite {
     this.el.classList.add('squish');
     setTimeout(() => this.el.classList.remove('squish'), 380);
     if (spawnFn) spawnFn();
+  }
+
+  // reset all 3 balloons to intact (call whenever entering the balloon state)
+  resetBalloons() {
+    this.container.querySelectorAll('.mochi-balloon, .mochi-string').forEach(el => el.classList.remove('popped'));
+  }
+
+  // pop one balloon by id ('b1'|'b2'|'b3'); returns how many remain intact
+  popBalloon(id) {
+    const balloon = this.container.querySelector('.mochi-balloon.' + id);
+    const string = this.container.querySelector('.mochi-string.' + id);
+    if (balloon && !balloon.classList.contains('popped')) {
+      const pt = balloon.querySelector('ellipse');
+      const burst = this.container.querySelector('.mochi-pop-burst');
+      if (pt && burst) {
+        const cx = pt.getAttribute('cx'), cy = pt.getAttribute('cy');
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', cx); txt.setAttribute('y', cy);
+        txt.setAttribute('font-size', '26'); txt.setAttribute('text-anchor', 'middle');
+        txt.textContent = '💥';
+        const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        wrap.setAttribute('transform', 'translate(158,60)');
+        wrap.appendChild(txt);
+        burst.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 550);
+      }
+      balloon.classList.add('popped');
+      if (string) string.classList.add('popped');
+    }
+    return this.container.querySelectorAll('.mochi-balloon:not(.popped)').length;
   }
 
   _scheduleTwitch() {

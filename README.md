@@ -4,6 +4,47 @@ A small desktop companion cat you can publish for real. This is the **rebranded,
 fully original, 100% offline** sibling of the `pusheen-app` fan project one
 folder up — built specifically to be shareable without any IP concerns.
 
+**v1.4.0:** a big interaction pass.
+
+- **Fixed real lag** in three states (`shy`, `excited`, `birthday`) — same
+  root cause as the earlier "eating is laggy" bug: `.mochi-blush`,
+  `.mochi-spark`, and `.mochi-conf` all animated `transform` (scale/rotate)
+  without `transform-box: fill-box`, so they visibly jittered around the
+  wrong origin point every cycle. All three fixed.
+- **Redesigned her eyes** — she used to have solid dark ellipses for eyes
+  with no white sclera, so there was no way to visually convey gaze
+  direction (this read as "always staring one way"). She now has a proper
+  white eye base with a smaller pupil inside it, plus a slow idle "glance"
+  animation so her eyes drift naturally instead of staring fixed.
+- **Slower overall movement** — walk/run/fly speeds all reduced (~20-25%)
+  for a calmer pace.
+- **Burger menu removed.** Double-click her to toggle Walking ↔ Standing
+  instead — one gesture, no UI chrome, confirmed via live DOM testing in
+  both directions.
+- **More animations:** `zoomies`, `roll`, and `peekaboo` added to the trick
+  pool.
+- **Flying got a lot more interesting:**
+  - Balloons are now **individually poppable** — click one and it pops with
+    a burst effect; pop all three and she **falls** (spinning) back to the
+    ground before resuming her walk. Verified end-to-end (3/3/2/1/0 →
+    `fall` state) via live testing.
+  - Two new ways to fly: **wings** (she sprouts a pair and flaps under her
+    own power) and **plane** (rides a little paper airplane).
+- **Context awareness (new):** Mochi now reacts to what you're doing on
+  your PC. A PowerShell helper (`context-check.ps1`), polled every 6s from
+  the main process, checks (a) whether a painting app (Paint, Photoshop,
+  GIMP, Krita, Paint.NET, and others) is the focused window, and (b)
+  whether something is actively playing via Windows' system-wide media
+  session (the same source behind the volume-flyout "now playing" widget —
+  picks up Spotify, browser tabs, Windows Media Player, etc.). When either
+  is detected she switches to the matching `paint`/`music` animation until
+  it stops. **Found and fixed a real bug while building this:** the
+  detection script used `$pid` as a variable name, which collides with
+  PowerShell's built-in read-only `$PID` automatic variable (the *script's
+  own* process ID) — the assignment silently failed every time (swallowed
+  by the try/catch), so foreground-app detection never actually worked
+  until renamed to `$fgPid`.
+
 **v1.3.0:** visual polish pass — Mochi now has a soft belly highlight, a
 subtle head-shine gradient, and sparkle dots in her eyes for a rounder,
 plusher, more expressive look (same original design: cream/caramel calico,
@@ -171,9 +212,12 @@ which needs your own accounts/payment to complete.
 ## Files
 
 - `mascot.js` / `mascot.css` — Mochi's shared animation engine
-- `pet.html` — the whole app: Walking/Standing modes, burger menu, drag,
-  resize, click-through
-- `main.js` / `preload.js` — Electron app shell + tray
+- `pet.html` — the whole app: Walking/Standing modes (double-click to
+  toggle), drag, resize, click-through, poppable balloons
+- `main.js` / `preload.js` — Electron app shell, tray, context-detection
+  polling loop
+- `context-check.ps1` — detects a focused painting app or playing music;
+  polled from `main.js` every 6s
 - `icon.png` / `icon-256.png` / `icon-art.html` — app icon (Mochi's face),
   source SVG in `icon-art.html`
 - `package.json` — build config (electron-builder, Windows NSIS target)

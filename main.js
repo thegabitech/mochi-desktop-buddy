@@ -1,4 +1,5 @@
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, shell } = require('electron');
+const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -26,9 +27,34 @@ function flushSave() {
   if (pendingPatch) { saveSettings(pendingPatch); pendingPatch = null; }
 }
 
+// ---- context awareness: react to what's happening on the PC ----
+// Polls a PowerShell helper every few seconds for (a) whether a painting app
+// is focused, or (b) whether something is actively playing via Windows'
+// system-wide "now playing" media session (same source as the volume-flyout
+// media widget -- picks up Spotify, browser tabs, Windows Media Player...).
+// Nothing here reads file contents or leaves the machine.
+let lastContext = null;
+let contextTimer = null;
+function pollContext() {
+  execFile('powershell.exe',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'context-check.ps1')],
+    { timeout: 8000, windowsHide: true },
+    (err, stdout) => {
+      let ctx = null;
+      if (!err && stdout) {
+        try { ctx = JSON.parse(stdout).context || null; } catch {}
+      }
+      if (ctx !== lastContext) {
+        lastContext = ctx;
+        if (petWin && !petWin.isDestroyed()) petWin.webContents.send('context:update', ctx);
+      }
+      contextTimer = setTimeout(pollContext, 6000);
+    });
+}
+
 // Mochi lives on one transparent full-screen overlay: she roams (Walking) or
-// stays put (Standing), switched from her own on-screen burger menu. Click-
-// through everywhere except on her (and the menu), so she never blocks work.
+// stays put (Standing), toggled by double-clicking her. Click-through
+// everywhere except on her, so she never blocks work.
 function createPet() {
   if (petWin) { petWin.focus(); return; }
   const { workArea } = screen.getPrimaryDisplay();
@@ -45,7 +71,8 @@ function createPet() {
   petWin.setIgnoreMouseEvents(true, { forward: true });
   petWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   petWin.loadFile('pet.html');
-  petWin.on('closed', () => { petWin = null; updateTray(); });
+  petWin.on('closed', () => { petWin = null; clearTimeout(contextTimer); updateTray(); });
+  petWin.webContents.once('did-finish-load', () => { lastContext = null; pollContext(); });
   updateTray();
 }
 

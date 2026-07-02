@@ -23,54 +23,25 @@
     20% { opacity: 1; }
     100% { opacity: 0; transform: translateY(-46px) scale(1.15) rotate(8deg); }
   }
-
-  /* ---- burger menu: solid enough to spot against any desktop background ---- */
-  #burger {
-    position: absolute; top: 10px; left: 10px; width: 38px; height: 38px;
-    border-radius: 10px; background: rgba(45, 40, 60, 0.92);
-    border: 1.5px solid rgba(255,255,255,0.25);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.35);
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    font-size: 18px; color: #fff; transition: background .15s, transform .1s;
-  }
-  #burger:hover { background: rgba(70, 60, 90, 0.96); transform: scale(1.05); }
-  #menu {
-    display: none; position: absolute; top: 50px; left: 10px; width: 190px;
-    background: rgba(255,255,255,0.97); border-radius: 12px;
-    box-shadow: 0 10px 28px rgba(90,84,102,0.3); padding: 8px;
-  }
-  #menu.open { display: block; }
-  .menu-row {
-    display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 9px;
-    border-radius: 9px; cursor: pointer; border: none; background: transparent;
-    font: inherit; font-size: 13px; font-weight: 600; color: #5a5466; text-align: left;
-  }
-  .menu-row:hover { background: rgba(120,105,150,.08); }
-  .menu-row .mi { font-size: 17px; width: 20px; text-align: center; }
-  .menu-row.active { background: linear-gradient(135deg, #ffd5e8, #e0d2ff); }
-  .menu-sep { height: 1px; background: rgba(90,84,102,.12); margin: 6px 4px; }
-  .menu-row.quit { color: #c0435a; }
-
   #hint {
     position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
     padding: 5px 10px; font-size: 12px; color: #fff;
     background: rgba(60, 55, 75, 0.85); border-radius: 8px;
     white-space: nowrap; pointer-events: none; transition: opacity 1s;
   }
+  #modetip {
+    position: absolute; padding: 4px 9px; font-size: 11px; color: #fff;
+    background: rgba(60, 55, 75, 0.9); border-radius: 7px; white-space: nowrap;
+    pointer-events: none; opacity: 0; transition: opacity .25s; transform: translate(-50%, -100%);
+  }
+  #modetip.show { opacity: 1; }
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="mochi-host"></div>
-  <div id="hint">☰ menu · drag me · click = new trick · scroll = size</div>
-
-  <div id="burger" title="Menu">☰</div>
-  <div id="menu">
-    <button class="menu-row active" id="mi-walk" type="button"><span class="mi">🚶</span>Walking</button>
-    <button class="menu-row" id="mi-stand" type="button"><span class="mi">🧍</span>Standing</button>
-    <div class="menu-sep"></div>
-    <button class="menu-row quit" id="mi-quit" type="button"><span class="mi">✕</span>Quit Mochi</button>
-  </div>
+  <div id="hint">drag me · click = new trick · double-click = walk/stand · scroll = size</div>
+  <div id="modetip"></div>
 </div>
 
 <script src="mascot.js"></script>
@@ -79,32 +50,39 @@
   const host = document.getElementById('mochi-host');
   const stage = document.getElementById('stage');
   const hint = document.getElementById('hint');
+  const modetip = document.getElementById('modetip');
   const mochi = new MochiSprite(host, { size: 96 });
 
-  // No eating/sleeping mechanic in this app — just tricks and travel.
+  // No eating/sleeping mechanic — just tricks, travel, and flight.
   const WALK_POOL = [
     'idle', 'sit', 'walk', 'run', 'dance', 'play', 'wave', 'stretch', 'wink',
-    'dizzy', 'curious', 'shy', 'excited', 'bored', 'laugh', 'nuzzle', 'music',
-    'read', 'paint', 'cold', 'sunny', 'birthday',
+    'dizzy', 'curious', 'shy', 'excited', 'bored', 'laugh', 'nuzzle',
+    'read', 'cold', 'sunny', 'birthday', 'zoomies', 'roll', 'peekaboo',
   ];
   const STAND_POOL = [
-    'sit', 'idle', 'curious', 'bored', 'nuzzle', 'read', 'music', 'sunny',
-    'cold', 'shy', 'stretch', 'paint', 'wink', 'wave',
+    'sit', 'idle', 'curious', 'bored', 'nuzzle', 'read', 'sunny',
+    'cold', 'shy', 'stretch', 'wink', 'wave', 'peekaboo',
   ];
-  const FLY_ONLY = ['fly'];
+  const FLY_POOL = ['balloon', 'wings', 'plane'];
+  // states triggered by what's happening on the user's PC (see main.js) --
+  // these override the random pool while the context is active.
+  const CONTEXT_STATES = { music: 'music', paint: 'paint' };
   const pick = a => a[(Math.random() * a.length) | 0];
   const W = () => window.innerWidth, H = () => window.innerHeight;
 
-  let mode = 'walk';      // menu selection: 'walk' | 'stand'
+  let mode = 'walk';      // 'walk' | 'stand', toggled by double-click
   let x = 60, y = 0, dir = 1, targetY = 0, dragging = false;
   let stateTimer = null, lastTs = null, size = 96;
   let standId = null;
+  let context = null;     // 'music' | 'paint' | null, pushed from main.js
+  let balloonsLeft = 3;
 
   function spriteW() { return size * (320 / 280); }
 
   // ---------- walking behavior: roams the screen ----------
   function walkNext(state, dur, vx) {
     clearTimeout(stateTimer);
+    if (state === 'balloon') { mochi.resetBalloons(); balloonsLeft = 3; }
     mochi.setState(state);
     mochi._vx = vx || 0;
     targetY = 0;
@@ -112,21 +90,34 @@
   }
   function chooseWalk() {
     if (mode !== 'walk' || dragging) return;
+    if (context && CONTEXT_STATES[context]) { walkNext(CONTEXT_STATES[context], 4000, 0); return; }
     const r = Math.random();
     if (Math.random() < 0.35) { dir *= -1; mochi.setDirection(dir); }
-    if      (r < 0.40) walkNext('walk', 5000 + Math.random() * 6000, 78);
-    else if (r < 0.55) walkNext('run', 1800 + Math.random() * 1800, 205);
-    else if (r < 0.72) { let s; do { s = pick(WALK_POOL.filter(g => g !== 'walk' && g !== 'run')); } while (s === mochi.state); walkNext(s, 2200 + Math.random() * 2200, 0); }
+    if      (r < 0.34) walkNext('walk', 5000 + Math.random() * 6000, 60);
+    else if (r < 0.46) walkNext('run', 1800 + Math.random() * 1800, 150);
+    else if (r < 0.74) { let s; do { s = pick(WALK_POOL.filter(g => g !== 'walk' && g !== 'run')); } while (s === mochi.state); walkNext(s, 2400 + Math.random() * 2600, 0); }
     else               flyNext();
   }
-  function flyNext() {
+  function flyNext(forceState) {
     if (mode !== 'walk' || dragging) return;
     clearTimeout(stateTimer);
-    mochi.setState(pick(FLY_ONLY));
-    mochi._vx = 85;
+    const st = forceState || pick(FLY_POOL);
+    if (st === 'balloon') { mochi.resetBalloons(); balloonsLeft = 3; }
+    mochi.setState(st);
+    mochi._vx = st === 'balloon' ? 45 : st === 'wings' ? 95 : 70;
     const maxAlt = Math.max(160, H() * 0.55 - size);
     targetY = 120 + Math.random() * (maxAlt - 120);
-    stateTimer = setTimeout(() => { targetY = 0; stateTimer = setTimeout(chooseWalk, 700); }, 4500 + Math.random() * 4500);
+    // balloons stay up until popped (see popCheck); others come down on a timer
+    if (st !== 'balloon') {
+      stateTimer = setTimeout(() => { targetY = 0; stateTimer = setTimeout(chooseWalk, 700); }, 4500 + Math.random() * 4500);
+    }
+  }
+  function fallToGround() {
+    clearTimeout(stateTimer);
+    mochi.setState('fall');
+    mochi._vx = mochi._vx ? mochi._vx * 0.4 : 20;
+    targetY = 0;
+    stateTimer = setTimeout(chooseWalk, 1200);
   }
 
   // ---------- standing behavior: stays put, calm poses ----------
@@ -134,6 +125,12 @@
     if (mode !== 'stand' || dragging) return;
     mochi._vx = 0;
     targetY = 0;
+    if (context && CONTEXT_STATES[context]) {
+      standId = CONTEXT_STATES[context];
+      mochi.setState(standId);
+      stateTimer = setTimeout(standNext, 6000);
+      return;
+    }
     let id; do { id = pick(STAND_POOL); } while (id === standId && STAND_POOL.length > 1);
     standId = id;
     mochi.setState(id);
@@ -150,9 +147,10 @@
         if (x <= 4) { x = 4; dir = 1; mochi.setDirection(dir); }
         if (x >= maxX) { x = maxX; dir = -1; mochi.setDirection(dir); }
       }
-      const sp = mochi.state === 'fly' ? 90 : 60;
+      const sp = (mochi.state === 'balloon' || mochi.state === 'wings' || mochi.state === 'plane') ? 90 : mochi.state === 'fall' ? 260 : 60;
       if (y < targetY) y = Math.min(targetY, y + sp * dt);
       else if (y > targetY) y = Math.max(targetY, y - sp * dt);
+      if (mochi.state === 'fall' && y <= 0.5) { y = 0; targetY = 0; }
       host.style.left = x + 'px';
       host.style.bottom = (2 + y) + 'px';
     }
@@ -160,16 +158,21 @@
     requestAnimationFrame(step);
   }
 
-  // ---------- mode switching (via burger menu) ----------
+  // ---------- mode switching: double-click toggles walk <-> stand ----------
   function setMode(m) {
     if (mode === m) return;
     mode = m;
     clearTimeout(stateTimer);
-    document.getElementById('mi-walk').classList.toggle('active', m === 'walk');
-    document.getElementById('mi-stand').classList.toggle('active', m === 'stand');
     if (window.pet) window.pet.saveSettings({ petMode: m });
-    if (m === 'walk') { y = 0; targetY = 0; walkNext('walk', 4000 + Math.random() * 3000, 78); }
+    if (m === 'walk') { y = 0; targetY = 0; walkNext('walk', 4000 + Math.random() * 3000, 60); }
     else { mochi._vx = 0; standNext(); }
+    const r = host.getBoundingClientRect();
+    modetip.textContent = m === 'walk' ? '🚶 Walking' : '🧍 Standing';
+    modetip.style.left = (r.left + r.width / 2) + 'px';
+    modetip.style.top = r.top + 'px';
+    modetip.classList.add('show');
+    clearTimeout(modetip._t);
+    modetip._t = setTimeout(() => modetip.classList.remove('show'), 1400);
   }
 
   // ---------- click-through: only the sprite itself is interactive ----------
@@ -177,15 +180,29 @@
   document.addEventListener('mousemove', e => {
     const w = spriteW();
     const bottomPx = window.innerHeight - 2 - y;
-    const overSprite = e.clientX >= x - 10 && e.clientX <= x + w + 10 &&
+    const over = e.clientX >= x - 10 && e.clientX <= x + w + 10 &&
                  e.clientY >= bottomPx - size - 14 && e.clientY <= bottomPx + 10;
-    const overMenu = e.clientX <= 210 && e.clientY <= (document.getElementById('menu').classList.contains('open') ? 260 : 54);
-    const over = overSprite || overMenu;
     if (over !== interactive) { interactive = over; if (window.pet) window.pet.setInteractive(over); }
   });
 
-  // ---------- click = new trick, drag = reposition (works in both modes) ----------
-  let dx0, dy0, moved = false, down = false;
+  // ---------- balloon hit-testing: pop the balloon nearest the click ----------
+  // Balloons cluster in the top-middle third of the 320x280 viewBox. We
+  // don't need pixel-perfect SVG math -- split the sprite into thirds
+  // (mirrored when flipped) and pop the balloon in that third.
+  function tryPopBalloon(clientX) {
+    if (mochi.state !== 'balloon') return false;
+    const r = host.getBoundingClientRect();
+    let frac = (clientX - r.left) / r.width; // 0..1 across the sprite
+    if (mochi.dir === -1) frac = 1 - frac;
+    const id = frac < 0.4 ? 'b1' : frac < 0.62 ? 'b2' : 'b3';
+    const remaining = mochi.popBalloon(id);
+    balloonsLeft = remaining;
+    if (remaining === 0) fallToGround();
+    return true;
+  }
+
+  // ---------- click = new trick / pop balloon, drag = reposition, dblclick = mode ----------
+  let dx0, dy0, moved = false, down = false, clickTimer = null;
   host.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     down = true; moved = false; dx0 = e.clientX; dy0 = e.clientY;
@@ -204,27 +221,37 @@
       host.style.left = x + 'px'; host.style.bottom = b + 'px';
     }
   });
-  function up() {
+  function up(e) {
     if (!down) return;
     down = false;
-    if (!moved) { newTrick(); return; }
+    if (!moved) {
+      // single click: pop a balloon, or wait briefly to see if it's a double-click
+      if (tryPopBalloon(e ? e.clientX : dx0)) return;
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(newTrick, 230);
+      return;
+    }
     dragging = false; host.classList.remove('dragging');
     y = Math.max(0, (parseFloat(host.style.bottom) || 2) - 2);
     targetY = y;
     if (mode === 'walk') {
-      stateTimer = setTimeout(y > 30 ? flyNext : chooseWalk, 800 + Math.random() * 1200);
+      stateTimer = setTimeout(y > 30 ? () => flyNext() : chooseWalk, 800 + Math.random() * 1200);
     } else {
       stateTimer = setTimeout(standNext, 800 + Math.random() * 1200);
     }
   }
   host.addEventListener('pointerup', up);
   host.addEventListener('pointercancel', up);
+  host.addEventListener('dblclick', () => {
+    clearTimeout(clickTimer); // cancel the pending single-click trick
+    setMode(mode === 'walk' ? 'stand' : 'walk');
+  });
 
   function newTrick() {
     if (mode === 'walk') {
       if (Math.random() < 0.22) { flyNext(); return; }
       let s; do { s = pick(WALK_POOL); } while (s === mochi.state);
-      walkNext(s, s === 'walk' ? 6500 : s === 'run' ? 2200 : 4200, s === 'walk' ? 78 : s === 'run' ? 205 : 0);
+      walkNext(s, s === 'walk' ? 6500 : s === 'run' ? 2200 : 4200, s === 'walk' ? 60 : s === 'run' ? 150 : 0);
     } else {
       let id; do { id = pick(STAND_POOL); } while (id === standId);
       standId = id;
@@ -236,17 +263,18 @@
 
   host.addEventListener('contextmenu', e => { e.preventDefault(); if (window.pet) window.pet.close(); });
 
-  // ---------- burger menu wiring ----------
-  const burger = document.getElementById('burger'), menu = document.getElementById('menu');
-  burger.addEventListener('click', () => menu.classList.toggle('open'));
-  document.addEventListener('pointerdown', e => {
-    if (menu.classList.contains('open') && !e.target.closest('#menu') && !e.target.closest('#burger')) {
-      menu.classList.remove('open');
-    }
-  });
-  document.getElementById('mi-walk').addEventListener('click', () => { setMode('walk'); menu.classList.remove('open'); });
-  document.getElementById('mi-stand').addEventListener('click', () => { setMode('stand'); menu.classList.remove('open'); });
-  document.getElementById('mi-quit').addEventListener('click', () => { if (window.pet) window.pet.close(); });
+  // ---------- react to what's happening on the user's PC ----------
+  if (window.pet && window.pet.onContext) {
+    window.pet.onContext(ctx => {
+      const changed = ctx !== context;
+      context = ctx;
+      if (changed && context && CONTEXT_STATES[context]) {
+        clearTimeout(stateTimer);
+        if (mode === 'walk') { targetY = 0; walkNext(CONTEXT_STATES[context], 5000, 0); }
+        else { standId = CONTEXT_STATES[context]; mochi.setState(standId); stateTimer = setTimeout(standNext, 6000); }
+      }
+    });
+  }
 
   // ---------- scroll to resize ----------
   document.addEventListener('wheel', e => {
@@ -262,8 +290,8 @@
   });
   host.style.left = x + 'px'; host.style.bottom = '2px';
   requestAnimationFrame(step);
-  walkNext('walk', 6000 + Math.random() * 4000, 78);
-  setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 1200); }, 6000);
+  walkNext('walk', 6000 + Math.random() * 4000, 60);
+  setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 1200); }, 7000);
 })();
 </script>
 </body>
