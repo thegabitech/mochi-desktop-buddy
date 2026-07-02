@@ -4,13 +4,15 @@ A small desktop companion cat you can publish for real. This is the **rebranded,
 fully original, 100% offline** sibling of the `pusheen-app` fan project one
 folder up — built specifically to be shareable without any IP concerns.
 
-**v1.1.1:** fixed a real first-run bug where the widget's action buttons
-(Feed/Pet/Dance/Play/Surprise) were permanently unclickable until the user
-happened to cycle Nap → Wake once — `setButtons(false)` ran at startup with
-nothing to ever re-enable it. Found via a from-scratch interactive
-verification pass (`document.getElementById(...).disabled` checks against
-the live app), not just code review — worth knowing if you're auditing
-similar init-sequence code elsewhere in this project.
+**v1.2.0:** simplified down to one window and one experience. The app now
+opens straight into **Walking** mode (no separate widget/tray dance needed
+to see her), with a small **☰ burger menu** on the overlay itself to switch
+to **Standing** (she stays put, still fully draggable). The whole
+tamagotchi-style companion widget — Feed/Pet/Dance/Play/Nap buttons, stats,
+and the eating/sleeping mechanic — has been removed; this is now purely a
+"cat that walks or stands on your screen and does tricks" app, not a virtual
+pet with hunger/sleep timers. `eat`/`sleep`/`tired`/`bed` are no longer in
+either behavior pool.
 
 ## What changed vs. the Pusheen version
 
@@ -30,62 +32,54 @@ original design made for this app.
 
 ## Architecture
 
-Three windows sharing one animation engine, controlled two ways: the system
-tray (original) and now an **in-app modes panel** in the widget itself (the
-🧩 button next to the close button) — click it to toggle Screen Walker and
-Desk Buddy on/off without ever touching the tray. No more hunting for a
-hidden icon; the widget is the hub.
+**One window, one animation engine, one on-screen menu.** Mochi lives on a
+single transparent, click-through-everywhere-except-on-her, full-screen
+overlay. She opens in Walking mode by default; click the **☰** in the
+corner to switch to Standing. No tray-hunting, no separate companion window.
 
 - `mascot.js` + `mascot.css` — the shared engine. One SVG, driven entirely by
-  CSS keyframes — **26 states**: `idle`, `walk`, `run`, `sit`, `sleep`,
-  `tired`, `eat`, `play`, `dance`, `fly`, `wave`, `stretch`, `wink`, `dizzy`,
-  `curious`, `shy`, `excited`, `bored`, `laugh`, `nuzzle`, `music`, `read`,
-  `paint`, `cold`, `sunny`, `birthday`. No raster assets, nothing fetched
-  over the network, ever.
+  CSS keyframes — **26 states** defined: `idle`, `walk`, `run`, `sit`,
+  `sleep`, `tired`, `eat`, `play`, `dance`, `fly`, `wave`, `stretch`, `wink`,
+  `dizzy`, `curious`, `shy`, `excited`, `bored`, `laugh`, `nuzzle`, `music`,
+  `read`, `paint`, `cold`, `sunny`, `birthday` — though `pet.html` only ever
+  *uses* 24 of them: `eat`/`sleep`/`tired`/`bed` are excluded from both
+  behavior pools (no more virtual-pet hunger/sleep mechanic). No raster
+  assets, nothing fetched over the network, ever.
   - **Gotcha this taught us:** a CSS `transform` (even via animation) fully
     *replaces* an SVG `transform="translate(...)"` attribute rather than
     composing with it. Every prop that needs both static positioning and its
     own animation uses a static outer `<g>` (attribute-positioned) wrapping
     an unpositioned inner `<g>` (CSS-animated) — see `mochi-bowl`/
-    `mochi-bowl-inner` for the pattern. Skipping this is what caused the
-    original "eating is laggy" bug (the chewing mouth and food bowl were
-    animating around the wrong transform origin, making them visibly jitter).
-- `widget.html` — the companion window: Feed / Pet / Dance / Play /
-  **Surprise** (samples the newer expressive states) / Nap buttons, stats,
-  auto-sleep, and the modes panel.
-- `walker.html` — transparent full-screen overlay; Mochi roams through all
-  26 states, flies on balloons, click-through everywhere except on her.
-  **Drag her** to reposition; she resumes roaming from the new spot.
-- `buddy.html` — small always-on-top window; Mochi sits and loafs through a
-  calm subset of states, fully **draggable**, resizable by scroll wheel,
-  remembers her spot across restarts.
-- `main.js` / `preload.js` — Electron shell: system tray *and* in-widget
-  modes panel (both drive the same `modes:get`/`modes:toggle` IPC, with
-  live-broadcast so either UI stays in sync with the other), single-instance
-  lock, IPC-driven window dragging (cursor-follow loop in the main process —
-  smooth, DPI-proof), debounced settings persistence.
-  - **Gotcha this taught us:** the widget window never had a `preload`
-    script wired up in `webPreferences` (walker/buddy did). The original
-    code always guarded every `window.pet` reference with a ternary
-    fallback, so this was invisible — until the modes panel called
-    `window.pet.getModes()` directly with no guard, which threw
-    `TypeError: Cannot read properties of undefined` on page load and
-    silently aborted the *entire* script before the Mochi sprite ever got
-    constructed. That was the real cause of the "blank widget" bug — always
-    give every `BrowserWindow` that talks to `window.pet` an explicit
-    `webPreferences.preload`, even if nothing seems to need it yet.
+    `mochi-bowl-inner` for the pattern.
+- `pet.html` — the whole app. Two behavior modes sharing one movement loop
+  and one drag mechanism:
+  - **Walking** (default) — roams the screen, ~74% chance of movement
+    (walk/run/fly) vs. static tricks each time she picks something new.
+  - **Standing** — parks in place, cycling calm poses only.
+  - Click her for a new trick in either mode. **Drag her** anywhere — since
+    the window already covers the whole screen, "dragging" just moves her
+    on-page position, no OS window movement needed (this is why Standing no
+    longer needs its own small window like the old `buddy.html` did).
+  - Scroll to resize. Right-click, or the menu's Quit, to close.
+- `main.js` / `preload.js` — Electron shell: single-instance lock, one
+  `BrowserWindow`, a minimal system tray (show/hide, start-with-Windows,
+  quit) as a backup control, debounced settings persistence (remembers mode
+  + size across restarts).
+  - **Gotcha this taught us (from the older 3-window version, still worth
+    knowing):** every `BrowserWindow` that talks to `window.pet` needs an
+    explicit `webPreferences.preload` — one window went without it for a
+    while, and an unguarded `window.pet.X()` call threw on load and silently
+    aborted the whole page script before anything rendered.
 
 ## Run it
 
 ```
 npm install
-npm start              # companion widget
-npm start -- --walker  # screen walker
-npm start -- --buddy   # still buddy
+npm start   # opens straight into Walking mode
 ```
 
 Or use the packaged build in `release/win-unpacked/Mochi.exe` (no Node
-required), or the installer `release/Mochi-Setup-1.0.0.exe`.
+required), or the installer `release/Mochi-Setup-<version>.exe`.
 
 ## Build
 
@@ -155,7 +149,8 @@ The installer is published on GitHub Releases so it has a stable, versioned
 URL — useful for sharing right now, and exactly what Microsoft's unpackaged
 EXE submission requires later:
 
-**Latest download:** https://github.com/thegabitech/mochi-desktop-buddy/releases/download/v1.0.0/Mochi-Setup-1.0.0.exe
+**Latest download:** see the [Releases page](https://github.com/thegabitech/mochi-desktop-buddy/releases/latest)
+for the current `Mochi-Setup-<version>.exe`.
 
 To publish a new version: bump `version` in `package.json`, rebuild
 (`npm run installer`), then
@@ -168,7 +163,8 @@ which needs your own accounts/payment to complete.
 ## Files
 
 - `mascot.js` / `mascot.css` — Mochi's shared animation engine
-- `widget.html` / `walker.html` / `buddy.html` — the three modes
+- `pet.html` — the whole app: Walking/Standing modes, burger menu, drag,
+  resize, click-through
 - `main.js` / `preload.js` — Electron app shell + tray
 - `icon.png` / `icon-256.png` / `icon-art.html` — app icon (Mochi's face),
   source SVG in `icon-art.html`

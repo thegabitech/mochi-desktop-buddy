@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mochi</title>
+<link rel="stylesheet" href="mascot.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent;
+    font-family: "Segoe UI", system-ui, sans-serif; }
+  #stage { position: absolute; inset: 0; }
+  #mochi-host {
+    position: absolute; bottom: 2px; left: 0;
+    will-change: transform, left, bottom; cursor: grab;
+  }
+  #mochi-host.dragging { cursor: grabbing; }
+  .float {
+    position: absolute; font-size: 22px; pointer-events: none; z-index: 6;
+    animation: floatup 1.4s ease-out forwards;
+  }
+  @keyframes floatup {
+    0% { opacity: 0; transform: translateY(4px) scale(.6); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-46px) scale(1.15) rotate(8deg); }
+  }
+
+  /* ---- burger menu ---- */
+  #burger {
+    position: absolute; top: 10px; left: 10px; width: 34px; height: 34px;
+    border-radius: 9px; background: rgba(60, 55, 75, 0.55); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    font-size: 16px; color: #fff; opacity: 0.55; transition: opacity .15s, background .15s;
+  }
+  #burger:hover { opacity: 1; background: rgba(60, 55, 75, 0.85); }
+  #menu {
+    display: none; position: absolute; top: 50px; left: 10px; width: 190px;
+    background: rgba(255,255,255,0.97); border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(90,84,102,0.3); padding: 8px;
+  }
+  #menu.open { display: block; }
+  .menu-row {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 9px;
+    border-radius: 9px; cursor: pointer; border: none; background: transparent;
+    font: inherit; font-size: 13px; font-weight: 600; color: #5a5466; text-align: left;
+  }
+  .menu-row:hover { background: rgba(120,105,150,.08); }
+  .menu-row .mi { font-size: 17px; width: 20px; text-align: center; }
+  .menu-row.active { background: linear-gradient(135deg, #ffd5e8, #e0d2ff); }
+  .menu-sep { height: 1px; background: rgba(90,84,102,.12); margin: 6px 4px; }
+  .menu-row.quit { color: #c0435a; }
+
+  #hint {
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    padding: 5px 10px; font-size: 12px; color: #fff;
+    background: rgba(60, 55, 75, 0.85); border-radius: 8px;
+    white-space: nowrap; pointer-events: none; transition: opacity 1s;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="mochi-host"></div>
+  <div id="hint">☰ menu · drag me · click = new trick · scroll = size</div>
+
+  <div id="burger" title="Menu">☰</div>
+  <div id="menu">
+    <button class="menu-row active" id="mi-walk" type="button"><span class="mi">🚶</span>Walking</button>
+    <button class="menu-row" id="mi-stand" type="button"><span class="mi">🧍</span>Standing</button>
+    <div class="menu-sep"></div>
+    <button class="menu-row quit" id="mi-quit" type="button"><span class="mi">✕</span>Quit Mochi</button>
+  </div>
+</div>
+
+<script src="mascot.js"></script>
+<script>
+(() => {
+  const host = document.getElementById('mochi-host');
+  const stage = document.getElementById('stage');
+  const hint = document.getElementById('hint');
+  const mochi = new MochiSprite(host, { size: 96 });
+
+  // No eating/sleeping mechanic in this app — just tricks and travel.
+  const WALK_POOL = [
+    'idle', 'sit', 'walk', 'run', 'dance', 'play', 'wave', 'stretch', 'wink',
+    'dizzy', 'curious', 'shy', 'excited', 'bored', 'laugh', 'nuzzle', 'music',
+    'read', 'paint', 'cold', 'sunny', 'birthday',
+  ];
+  const STAND_POOL = [
+    'sit', 'idle', 'curious', 'bored', 'nuzzle', 'read', 'music', 'sunny',
+    'cold', 'shy', 'stretch', 'paint', 'wink', 'wave',
+  ];
+  const FLY_ONLY = ['fly'];
+  const pick = a => a[(Math.random() * a.length) | 0];
+  const W = () => window.innerWidth, H = () => window.innerHeight;
+
+  let mode = 'walk';      // menu selection: 'walk' | 'stand'
+  let x = 60, y = 0, dir = 1, targetY = 0, dragging = false;
+  let stateTimer = null, lastTs = null, size = 96;
+  let standId = null;
+
+  function spriteW() { return size * (320 / 280); }
+
+  // ---------- walking behavior: roams the screen ----------
+  function walkNext(state, dur, vx) {
+    clearTimeout(stateTimer);
+    mochi.setState(state);
+    mochi._vx = vx || 0;
+    targetY = 0;
+    stateTimer = setTimeout(chooseWalk, dur);
+  }
+  function chooseWalk() {
+    if (mode !== 'walk' || dragging) return;
+    const r = Math.random();
+    if (Math.random() < 0.35) { dir *= -1; mochi.setDirection(dir); }
+    if      (r < 0.40) walkNext('walk', 5000 + Math.random() * 6000, 78);
+    else if (r < 0.55) walkNext('run', 1800 + Math.random() * 1800, 205);
+    else if (r < 0.72) { let s; do { s = pick(WALK_POOL.filter(g => g !== 'walk' && g !== 'run')); } while (s === mochi.state); walkNext(s, 2200 + Math.random() * 2200, 0); }
+    else               flyNext();
+  }
+  function flyNext() {
+    if (mode !== 'walk' || dragging) return;
+    clearTimeout(stateTimer);
+    mochi.setState(pick(FLY_ONLY));
+    mochi._vx = 85;
+    const maxAlt = Math.max(160, H() * 0.55 - size);
+    targetY = 120 + Math.random() * (maxAlt - 120);
+    stateTimer = setTimeout(() => { targetY = 0; stateTimer = setTimeout(chooseWalk, 700); }, 4500 + Math.random() * 4500);
+  }
+
+  // ---------- standing behavior: stays put, calm poses ----------
+  function standNext() {
+    if (mode !== 'stand' || dragging) return;
+    mochi._vx = 0;
+    targetY = 0;
+    let id; do { id = pick(STAND_POOL); } while (id === standId && STAND_POOL.length > 1);
+    standId = id;
+    mochi.setState(id);
+    stateTimer = setTimeout(standNext, 13000 + Math.random() * 20000);
+  }
+
+  // ---------- shared movement loop ----------
+  function step(ts) {
+    if (lastTs !== null && !dragging) {
+      const dt = Math.min(ts - lastTs, 100) / 1000;
+      if (mochi._vx) {
+        x += dir * mochi._vx * dt;
+        const maxX = W() - spriteW() - 4;
+        if (x <= 4) { x = 4; dir = 1; mochi.setDirection(dir); }
+        if (x >= maxX) { x = maxX; dir = -1; mochi.setDirection(dir); }
+      }
+      const sp = mochi.state === 'fly' ? 90 : 60;
+      if (y < targetY) y = Math.min(targetY, y + sp * dt);
+      else if (y > targetY) y = Math.max(targetY, y - sp * dt);
+      host.style.left = x + 'px';
+      host.style.bottom = (2 + y) + 'px';
+    }
+    lastTs = ts;
+    requestAnimationFrame(step);
+  }
+
+  // ---------- mode switching (via burger menu) ----------
+  function setMode(m) {
+    if (mode === m) return;
+    mode = m;
+    clearTimeout(stateTimer);
+    document.getElementById('mi-walk').classList.toggle('active', m === 'walk');
+    document.getElementById('mi-stand').classList.toggle('active', m === 'stand');
+    if (window.pet) window.pet.saveSettings({ petMode: m });
+    if (m === 'walk') { y = 0; targetY = 0; walkNext('walk', 4000 + Math.random() * 3000, 78); }
+    else { mochi._vx = 0; standNext(); }
+  }
+
+  // ---------- click-through: only the sprite itself is interactive ----------
+  let interactive = false;
+  document.addEventListener('mousemove', e => {
+    const w = spriteW();
+    const bottomPx = window.innerHeight - 2 - y;
+    const overSprite = e.clientX >= x - 10 && e.clientX <= x + w + 10 &&
+                 e.clientY >= bottomPx - size - 14 && e.clientY <= bottomPx + 10;
+    const overMenu = e.clientX <= 210 && e.clientY <= (document.getElementById('menu').classList.contains('open') ? 260 : 54);
+    const over = overSprite || overMenu;
+    if (over !== interactive) { interactive = over; if (window.pet) window.pet.setInteractive(over); }
+  });
+
+  // ---------- click = new trick, drag = reposition (works in both modes) ----------
+  let dx0, dy0, moved = false, down = false;
+  host.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    down = true; moved = false; dx0 = e.clientX; dy0 = e.clientY;
+    host.setPointerCapture(e.pointerId);
+  });
+  host.addEventListener('pointermove', e => {
+    if (!down) return;
+    if (!moved && Math.hypot(e.clientX - dx0, e.clientY - dy0) > 6) {
+      moved = true; dragging = true; clearTimeout(stateTimer);
+      host.classList.add('dragging');
+    }
+    if (dragging) {
+      x = Math.max(0, Math.min(W() - spriteW(), e.clientX - spriteW() / 2));
+      let b = H() - e.clientY - size * 0.45;
+      b = Math.max(2, Math.min(H() - size - 6, b));
+      host.style.left = x + 'px'; host.style.bottom = b + 'px';
+    }
+  });
+  function up() {
+    if (!down) return;
+    down = false;
+    if (!moved) { newTrick(); return; }
+    dragging = false; host.classList.remove('dragging');
+    y = Math.max(0, (parseFloat(host.style.bottom) || 2) - 2);
+    targetY = y;
+    if (mode === 'walk') {
+      stateTimer = setTimeout(y > 30 ? flyNext : chooseWalk, 800 + Math.random() * 1200);
+    } else {
+      stateTimer = setTimeout(standNext, 800 + Math.random() * 1200);
+    }
+  }
+  host.addEventListener('pointerup', up);
+  host.addEventListener('pointercancel', up);
+
+  function newTrick() {
+    if (mode === 'walk') {
+      if (Math.random() < 0.22) { flyNext(); return; }
+      let s; do { s = pick(WALK_POOL); } while (s === mochi.state);
+      walkNext(s, s === 'walk' ? 6500 : s === 'run' ? 2200 : 4200, s === 'walk' ? 78 : s === 'run' ? 205 : 0);
+    } else {
+      let id; do { id = pick(STAND_POOL); } while (id === standId);
+      standId = id;
+      mochi.setState(id);
+      clearTimeout(stateTimer);
+      stateTimer = setTimeout(standNext, 13000 + Math.random() * 20000);
+    }
+  }
+
+  host.addEventListener('contextmenu', e => { e.preventDefault(); if (window.pet) window.pet.close(); });
+
+  // ---------- burger menu wiring ----------
+  const burger = document.getElementById('burger'), menu = document.getElementById('menu');
+  burger.addEventListener('click', () => menu.classList.toggle('open'));
+  document.addEventListener('pointerdown', e => {
+    if (menu.classList.contains('open') && !e.target.closest('#menu') && !e.target.closest('#burger')) {
+      menu.classList.remove('open');
+    }
+  });
+  document.getElementById('mi-walk').addEventListener('click', () => { setMode('walk'); menu.classList.remove('open'); });
+  document.getElementById('mi-stand').addEventListener('click', () => { setMode('stand'); menu.classList.remove('open'); });
+  document.getElementById('mi-quit').addEventListener('click', () => { if (window.pet) window.pet.close(); });
+
+  // ---------- scroll to resize ----------
+  document.addEventListener('wheel', e => {
+    if (!interactive || dragging) return;
+    size = Math.max(48, Math.min(220, size - Math.sign(e.deltaY) * 8));
+    mochi.setSize(size);
+    if (window.pet) window.pet.saveSettings({ petSize: size });
+  }, { passive: true });
+
+  // ---------- init ----------
+  if (window.pet) window.pet.getSettings().then(s => {
+    if (s && s.petSize) { size = Math.max(48, Math.min(220, s.petSize)); mochi.setSize(size); }
+  });
+  host.style.left = x + 'px'; host.style.bottom = '2px';
+  requestAnimationFrame(step);
+  walkNext('walk', 6000 + Math.random() * 4000, 78);
+  setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 1200); }, 6000);
+})();
+</script>
+</body>
+</html>
