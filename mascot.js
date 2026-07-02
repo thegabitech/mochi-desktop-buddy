@@ -144,7 +144,10 @@ class MochiSprite {
     this.container = container;
     container.innerHTML = MOCHI_SVG;
     this.el = container.querySelector('.mochi-sprite');
-    this.state = 'idle';
+    // null (not 'idle'): setState()'s no-op guard compares against this, so
+    // the very first setState('idle') call must not be silently skipped —
+    // otherwise the class attribute never gets an explicit state suffix.
+    this.state = null;
     this.dir = 1;
     this._twitchTimer = null;
     this.setSize(opts.size || 132);

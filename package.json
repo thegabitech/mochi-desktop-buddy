@@ -1,7 +1,7 @@
 {
   "name": "mochi-desktop-buddy",
   "productName": "Mochi",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Mochi — an original animated desktop cat companion. Fully offline, no external content.",
   "author": "Gabriel",
   "main": "main.js",

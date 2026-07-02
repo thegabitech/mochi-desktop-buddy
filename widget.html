@@ -261,7 +261,7 @@
   setInterval(() => { if (!sleeping && !busy) setStatus(pick(idleLines)); }, 22000);
 
   saveStats();
-  setButtons(false);
+  setButtons(true);
   mochi.setState('idle');
   setStatus('Hi, I\'m Mochi!');
   resetIdle();

@@ -4,6 +4,14 @@ A small desktop companion cat you can publish for real. This is the **rebranded,
 fully original, 100% offline** sibling of the `pusheen-app` fan project one
 folder up — built specifically to be shareable without any IP concerns.
 
+**v1.1.1:** fixed a real first-run bug where the widget's action buttons
+(Feed/Pet/Dance/Play/Surprise) were permanently unclickable until the user
+happened to cycle Nap → Wake once — `setButtons(false)` ran at startup with
+nothing to ever re-enable it. Found via a from-scratch interactive
+verification pass (`document.getElementById(...).disabled` checks against
+the live app), not just code review — worth knowing if you're auditing
+similar init-sequence code elsewhere in this project.
+
 ## What changed vs. the Pusheen version
 
 | | Pusheen fan app (`../`) | Mochi (this folder) |
