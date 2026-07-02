@@ -77,11 +77,32 @@ and setting `signAndEditExecutable: false`.
 - Clean, buildable Windows installer.
 
 **Still needed before an actual store listing:**
-- **Microsoft Store**: needs a (one-time, ~$19 individual) developer
-  account, and the Win32 app needs to be wrapped via the
-  [MSIX packaging tool](https://learn.microsoft.com/windows/msix/package/packaging-tool-uninstall)
-  or `electron-builder`'s `appx` target. No code changes required, just
-  account setup + a packaging pass.
+
+- **Microsoft Store — two real paths:**
+  1. **MSIX/APPX** (native Store package): `npm run msix` is wired up
+     (`electron-builder --win appx`), but building it locally requires the
+     **Windows 10/11 SDK** (`makeappx.exe`/`makepri.exe`), which isn't
+     installed on this machine — unlike NSIS, electron-builder does not
+     auto-download these. Install the SDK (or the lighter
+     `Microsoft.Windows.SDK.BuildTools` NuGet package, untested with
+     electron-builder) to unblock this, then update the placeholder
+     `identityName`/`publisher` values in `package.json`'s `appx` block with
+     the real values Partner Center gives you after reserving the app name.
+  2. **Unpackaged EXE submission** (what we're set up for): Microsoft has
+     accepted plain Win32 installers directly since ~2020 — no MSIX needed.
+     Confirmed requirements ([Microsoft Learn](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/app-package-requirements)):
+     - **The installer must be Authenticode-signed** with a real code-signing
+       certificate before submission. *Not done yet* — cheapest legitimate
+       option is [Azure Trusted Signing](https://learn.microsoft.com/azure/trusted-signing/overview)
+       (~$10/month); wire it into `electron-builder`'s `win.certificateFile`/
+       signing hook once you have an account.
+     - **Silent install** — confirmed working: `Mochi-Setup-1.0.0.exe /S`
+       installs with zero UI.
+     - **You host the installer yourself** at a stable, versioned HTTPS URL
+       (Microsoft links to it, doesn't take an upload). Set up as a GitHub
+       Release — see below.
+  - Either path also needs the one-time (~$19) Partner Center individual
+    developer account.
 - **Apple App Store (macOS)**: Electron *can* target macOS
   (`electron-builder --mac`), but shipping to the Mac App Store needs (a) a
   Mac to build/test on, (b) an Apple Developer Program membership ($99/yr),
@@ -93,9 +114,23 @@ and setting `signAndEditExecutable: false`.
 - Pick a final app name/icon if "Mochi" collides with something already on
   a store (a quick search before submitting is worth doing).
 
-None of the above requires more design or coding work on the app itself —
-it's account setup, signing, and per-platform packaging, which needs your
-own Apple ID / Microsoft account to do.
+## Public download / releases
+
+**Repo:** https://github.com/thegabitech/mochi-desktop-buddy
+
+The installer is published on GitHub Releases so it has a stable, versioned
+URL — useful for sharing right now, and exactly what Microsoft's unpackaged
+EXE submission requires later:
+
+**Latest download:** https://github.com/thegabitech/mochi-desktop-buddy/releases/download/v1.0.0/Mochi-Setup-1.0.0.exe
+
+To publish a new version: bump `version` in `package.json`, rebuild
+(`npm run installer`), then
+`gh release create vX.Y.Z release/Mochi-Setup-X.Y.Z.exe --title "Mochi vX.Y.Z" --notes "..."`.
+
+None of the remaining items require more design or coding work on the app
+itself — it's account setup, a paid certificate, and per-platform packaging,
+which needs your own accounts/payment to complete.
 
 ## Files
 
