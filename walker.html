@@ -54,25 +54,28 @@
     targetY = 0;
     stateTimer = setTimeout(chooseGround, dur);
   }
+  // Weighted toward actual movement (walk/run/fly) so she roams the screen
+  // often, rather than parking on one spot doing static poses for long
+  // stretches — much easier to spot and more lively to watch.
   function chooseGround() {
     if (dragging) return;
     const r = Math.random();
-    if (mochi.state === 'tired') { walkNext('sleep', 14000 + Math.random() * 16000, 0); return; }
-    if (Math.random() < 0.3) { dir *= -1; mochi.setDirection(dir); }
-    if      (r < 0.34) walkNext('walk', 6500 + Math.random() * 8000, 58);
-    if      (r < 0.42) walkNext('run', 2200 + Math.random() * 2200, 165);
-    else if (r < 0.72) { let s; do { s = pick(GROUND.filter(g => g !== 'walk' && g !== 'run')); } while (s === mochi.state); walkNext(s, 4200 + Math.random() * 4200, 0); }
-    else if (r < 0.9)  flyNext();
-    else               walkNext('tired', 2600 + Math.random() * 1800, 0);
+    if (mochi.state === 'tired') { walkNext('sleep', 10000 + Math.random() * 12000, 0); return; }
+    if (Math.random() < 0.35) { dir *= -1; mochi.setDirection(dir); }
+    if      (r < 0.40) walkNext('walk', 5000 + Math.random() * 6000, 78);
+    else if (r < 0.55) walkNext('run', 1800 + Math.random() * 1800, 205);
+    else if (r < 0.72) { let s; do { s = pick(GROUND.filter(g => g !== 'walk' && g !== 'run')); } while (s === mochi.state); walkNext(s, 2200 + Math.random() * 2200, 0); }
+    else if (r < 0.94) flyNext();
+    else               walkNext('tired', 2000 + Math.random() * 1200, 0);
   }
   function flyNext() {
     if (dragging) return;
     clearTimeout(stateTimer);
     mochi.setState('fly');
-    mochi._vx = 60;
+    mochi._vx = 85;
     const maxAlt = Math.max(160, H() * 0.55 - size);
     targetY = 120 + Math.random() * (maxAlt - 120);
-    stateTimer = setTimeout(() => { targetY = 0; stateTimer = setTimeout(chooseGround, 900); }, 6000 + Math.random() * 6000);
+    stateTimer = setTimeout(() => { targetY = 0; stateTimer = setTimeout(chooseGround, 700); }, 4500 + Math.random() * 4500);
   }
 
   function step(ts) {

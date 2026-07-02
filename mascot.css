@@ -37,12 +37,12 @@
 .mochi-sprite.walk .mochi-leg.l, .mochi-sprite.run .mochi-leg.r { animation: mochi-step 0.5s ease-in-out infinite; }
 .mochi-sprite.walk .mochi-leg.r, .mochi-sprite.run .mochi-leg.l { animation: mochi-step 0.5s ease-in-out infinite 0.25s; }
 .mochi-sprite.run .mochi-leg.l, .mochi-sprite.run .mochi-leg.r { animation-duration: 0.26s; }
-@keyframes mochi-step { 0%, 100% { transform: rotate(0deg) translateY(0); } 50% { transform: rotate(-14deg) translateY(-4px); } }
+@keyframes mochi-step { 0%, 100% { transform: rotate(0deg) translateY(0); } 50% { transform: rotate(-22deg) translateY(-7px); } }
 
 /* whole-body waddle while moving */
 .mochi-sprite.walk .mochi-body-group { animation: mochi-waddle 0.5s ease-in-out infinite; }
 .mochi-sprite.run .mochi-body-group { animation: mochi-waddle 0.26s ease-in-out infinite; }
-@keyframes mochi-waddle { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(-2deg); } }
+@keyframes mochi-waddle { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-4deg); } }
 
 /* ---------- flying ---------- */
 .mochi-balloons { display: none; }
