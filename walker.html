@@ -33,7 +33,11 @@
   const hint = document.getElementById('hint');
   const mochi = new MochiSprite(host, { size: 96 });
 
-  const GROUND = ['idle', 'sit', 'walk', 'run', 'eat', 'dance', 'play', 'tired'];
+  const GROUND = [
+    'idle', 'sit', 'walk', 'run', 'eat', 'dance', 'play', 'tired',
+    'wave', 'stretch', 'wink', 'dizzy', 'curious', 'shy', 'excited', 'bored',
+    'laugh', 'nuzzle', 'music', 'read', 'paint', 'cold', 'sunny', 'birthday',
+  ];
   const FLY_ONLY = ['fly'];
   const pick = a => a[(Math.random() * a.length) | 0];
   const W = () => window.innerWidth, H = () => window.innerHeight;

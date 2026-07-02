@@ -28,6 +28,7 @@
 .mochi-eye-open { transform-box: fill-box; transform-origin: center; animation: mochi-blink 4.2s infinite; }
 @keyframes mochi-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
 .mochi-eye-closed { display: none; }
+.mochi-eye-half { display: none; }
 .mochi-sprite.sleep .mochi-eye-open { display: none; }
 .mochi-sprite.sleep .mochi-eye-closed { display: block; }
 
@@ -56,17 +57,26 @@
 @keyframes mochi-bob-b { 0%, 100% { transform: translateY(-4px) rotate(3deg); } 50% { transform: translateY(4px) rotate(-3deg); } }
 
 /* ---------- eating ---------- */
+/* NOTE: a CSS `transform` (even via animation) fully replaces an element's
+   SVG `transform="translate(...)"` attribute rather than composing with it.
+   So any prop that's positioned via an attribute keeps that attribute on a
+   static OUTER <g>, and gets its own animation on an unpositioned INNER <g>. */
 .mochi-bowl { display: none; }
-.mochi-sprite.eat .mochi-bowl { display: block; animation: mochi-bowl-pop .3s ease; }
+.mochi-sprite.eat .mochi-bowl { display: block; }
+.mochi-bowl-inner { transform-box: fill-box; transform-origin: 50% 100%; }
+.mochi-sprite.eat .mochi-bowl-inner { animation: mochi-bowl-pop .3s ease; }
 @keyframes mochi-bowl-pop { 0% { transform: scale(0) translateY(10px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
-.mochi-mouth-eat { display: none; }
+.mochi-mouth-eat { display: none; transform-box: fill-box; transform-origin: 50% 50%; }
+.mochi-mouth-laugh { display: none; }
 .mochi-sprite.eat .mochi-mouth-idle { display: none; }
 .mochi-sprite.eat .mochi-mouth-eat { display: block; animation: mochi-chew 0.4s ease-in-out infinite; }
 @keyframes mochi-chew { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
 
 /* ---------- playing (toy ball) ---------- */
 .mochi-toy { display: none; }
-.mochi-sprite.play .mochi-toy { display: block; animation: mochi-toy-bounce 0.55s ease-in-out infinite; }
+.mochi-sprite.play .mochi-toy { display: block; }
+.mochi-toy-inner { transform-box: fill-box; transform-origin: 50% 50%; }
+.mochi-sprite.play .mochi-toy-inner { animation: mochi-toy-bounce 0.55s ease-in-out infinite; }
 @keyframes mochi-toy-bounce { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-16px) rotate(80deg); } }
 .mochi-sprite.play .mochi-leg { animation: mochi-paw-bat 0.55s ease-in-out infinite; }
 @keyframes mochi-paw-bat { 0%, 60%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-22deg) translateY(-6px); } }
@@ -101,6 +111,120 @@
 /* ---------- love / pet squish ---------- */
 .mochi-sprite.squish .mochi-body-group { animation: mochi-squish .35s ease; }
 @keyframes mochi-squish { 0%, 100% { transform: scale(1,1); } 45% { transform: scale(1.06,0.92); } }
+
+/* ================= a lot more animations ================= */
+
+/* ---------- wave (greeting) ---------- */
+.mochi-sprite.wave .mochi-leg.r { animation: mochi-wave-paw .7s ease-in-out infinite; }
+@keyframes mochi-wave-paw { 0%, 100% { transform: rotate(-42deg) translateY(-16px); } 50% { transform: rotate(6deg) translateY(-16px); } }
+.mochi-sprite.wave .mochi-body-group { animation: mochi-wave-bob 1.4s ease-in-out infinite; }
+@keyframes mochi-wave-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* ---------- stretch ---------- */
+.mochi-sprite.stretch .mochi-body-group { animation: mochi-stretch-body 1.6s ease-in-out infinite; }
+@keyframes mochi-stretch-body { 0%, 100% { transform: scale(1,1); } 50% { transform: scale(1.14,0.86) translateY(4px); } }
+.mochi-sprite.stretch .mochi-leg { animation: mochi-stretch-leg 1.6s ease-in-out infinite; }
+@keyframes mochi-stretch-leg { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
+
+/* ---------- wink ---------- */
+.mochi-sprite.wink .mochi-eye-open.r { display: none; }
+.mochi-sprite.wink .mochi-eye-closed.r { display: block; }
+.mochi-sprite.wink .mochi-body-group { animation: mochi-wink-tilt 1.2s ease-in-out infinite; }
+@keyframes mochi-wink-tilt { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+
+/* ---------- dizzy ---------- */
+.mochi-stars { display: none; }
+.mochi-sprite.dizzy .mochi-stars { display: block; }
+.mochi-stars-spin { transform-box: fill-box; transform-origin: center; animation: mochi-stars-orbit 1.8s linear infinite; }
+@keyframes mochi-stars-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.mochi-sprite.dizzy .mochi-body-group { animation: mochi-wobble .6s ease-in-out infinite; }
+@keyframes mochi-wobble { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+
+/* ---------- curious (head tilt, one ear perked) ---------- */
+.mochi-sprite.curious .mochi-body-group { animation: mochi-tilt 1.8s ease-in-out infinite; }
+@keyframes mochi-tilt { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-8deg); } }
+.mochi-sprite.curious .mochi-ear.r { animation: mochi-perk 1.8s ease-in-out infinite; }
+@keyframes mochi-perk { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(12deg) scale(1.06); } }
+
+/* ---------- shy (paws-adjacent blush, small shrink) ---------- */
+.mochi-sprite.shy .mochi-blush { animation: mochi-blush-grow 1.4s ease-in-out infinite; }
+@keyframes mochi-blush-grow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.6); } }
+.mochi-sprite.shy .mochi-body-group { animation: mochi-shrink 1.4s ease-in-out infinite; }
+@keyframes mochi-shrink { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.96); } }
+.mochi-sprite.shy .mochi-eye-open { animation: mochi-droopy 1.4s ease-in-out infinite; }
+
+/* ---------- excited (bouncy sparkle burst) ---------- */
+.mochi-sparkles { display: none; }
+.mochi-sprite.excited .mochi-sparkles { display: block; }
+.mochi-spark { animation: mochi-spark-twinkle 1s ease-in-out infinite; opacity: 0; }
+.mochi-spark.p2 { animation-delay: .25s; } .mochi-spark.p3 { animation-delay: .5s; } .mochi-spark.p4 { animation-delay: .75s; }
+@keyframes mochi-spark-twinkle { 0%, 100% { opacity: 0; transform: scale(.5); } 50% { opacity: 1; transform: scale(1.1); } }
+.mochi-sprite.excited .mochi-body-group { animation: mochi-jump .4s ease-in-out infinite; }
+@keyframes mochi-jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+
+/* ---------- bored (half-lid eyes, slow tail flick) ---------- */
+.mochi-sprite.bored .mochi-eye-open { display: none; }
+.mochi-sprite.bored .mochi-eye-half { display: block; }
+.mochi-sprite.bored .mochi-tail { animation: mochi-flick 2.6s ease-in-out infinite; }
+@keyframes mochi-flick { 0%, 80%, 100% { transform: rotate(0deg); } 90% { transform: rotate(-10deg); } }
+
+/* ---------- laugh ---------- */
+.mochi-sprite.laugh .mochi-mouth-idle { display: none; }
+.mochi-sprite.laugh .mochi-mouth-laugh { display: block; }
+.mochi-sprite.laugh .mochi-body-group { animation: mochi-chuckle .3s ease-in-out infinite; }
+@keyframes mochi-chuckle { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(3deg); } }
+
+/* ---------- nuzzle (lean + happy closed eyes) ---------- */
+.mochi-sprite.nuzzle .mochi-eye-open { display: none; }
+.mochi-sprite.nuzzle .mochi-eye-closed { display: block; }
+.mochi-sprite.nuzzle .mochi-body-group { animation: mochi-lean 1.6s ease-in-out infinite; }
+@keyframes mochi-lean { 0%, 100% { transform: rotate(0deg) translateX(0); } 50% { transform: rotate(-6deg) translateX(-4px); } }
+
+/* ---------- music (headphones + bob) ---------- */
+.mochi-headphones { display: none; }
+.mochi-sprite.music .mochi-headphones { display: block; transform-box: fill-box; transform-origin: 50% 100%; animation: mochi-head-bob .5s ease-in-out infinite; }
+@keyframes mochi-head-bob { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.mochi-note { animation: mochi-note-float 1.2s ease-out infinite; }
+@keyframes mochi-note-float { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-18px); } }
+.mochi-sprite.music .mochi-body-group { animation: mochi-head-bob .5s ease-in-out infinite; }
+
+/* ---------- reading ---------- */
+.mochi-book { display: none; }
+.mochi-sprite.read .mochi-book { display: block; }
+.mochi-page { transform-box: fill-box; transform-origin: 0% 50%; animation: mochi-page-flip 2.2s ease-in-out infinite; }
+@keyframes mochi-page-flip { 0%, 40% { transform: scaleX(1); } 50% { transform: scaleX(0.1); } 60%, 100% { transform: scaleX(1); } }
+.mochi-sprite.read .mochi-eye-open { animation: mochi-scan 2.2s ease-in-out infinite; }
+@keyframes mochi-scan { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(2px); } }
+
+/* ---------- painting ---------- */
+.mochi-easel { display: none; }
+.mochi-sprite.paint .mochi-easel { display: block; }
+.mochi-dab { transform-box: fill-box; transform-origin: center; animation: mochi-dab-pop .6s ease-in-out infinite; opacity: 0; }
+.mochi-dab:nth-child(5) { animation-delay: .3s; }
+@keyframes mochi-dab-pop { 0%, 20% { opacity: 0; transform: scale(0); } 40% { opacity: 1; transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
+.mochi-sprite.paint .mochi-leg.r { animation: mochi-paint-stroke .6s ease-in-out infinite; }
+@keyframes mochi-paint-stroke { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-18deg); } }
+
+/* ---------- cold (scarf + shiver) ---------- */
+.mochi-scarf { display: none; }
+.mochi-sprite.cold .mochi-scarf { display: block; }
+.mochi-sprite.cold .mochi-body-group { animation: mochi-shiver .18s ease-in-out infinite; }
+@keyframes mochi-shiver { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(2px); } }
+
+/* ---------- sunny (sunglasses + relax) ---------- */
+.mochi-shades { display: none; }
+.mochi-sprite.sunny .mochi-shades { display: block; }
+.mochi-sprite.sunny .mochi-eye-open, .mochi-sprite.sunny .mochi-eye-closed { display: none; }
+.mochi-sprite.sunny .mochi-body-group { animation: mochi-relax 3s ease-in-out infinite; }
+@keyframes mochi-relax { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-3deg) translateY(2px); } }
+
+/* ---------- birthday (party hat + confetti) ---------- */
+.mochi-partyhat, .mochi-confetti { display: none; }
+.mochi-sprite.birthday .mochi-partyhat, .mochi-sprite.birthday .mochi-confetti { display: block; }
+.mochi-sprite.birthday .mochi-body-group { animation: mochi-jump .5s ease-in-out infinite; }
+.mochi-conf { animation: mochi-confetti-fall 1.6s ease-in infinite; opacity: 0; }
+.mochi-conf.c2 { animation-delay: .4s; } .mochi-conf.c3 { animation-delay: .8s; }
+@keyframes mochi-confetti-fall { 0% { opacity: 0; transform: translateY(-10px) rotate(0deg); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(40px) rotate(180deg); } }
 
 /* ---------- floating emoji particles (hearts/sparkles), spawned by JS ---------- */
 .mochi-float-particle {

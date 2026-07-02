@@ -13,4 +13,8 @@ contextBridge.exposeInMainWorld('pet', {
   // persisted settings (sizes, positions)
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: patch => ipcRenderer.send('settings:set', patch),
+  // in-app mode control panel: which windows are open, and toggling them
+  getModes: () => ipcRenderer.invoke('modes:get'),
+  toggleMode: name => ipcRenderer.send('modes:toggle', name),
+  onModesChanged: fn => ipcRenderer.on('modes:changed', (_e, modes) => fn(modes)),
 });

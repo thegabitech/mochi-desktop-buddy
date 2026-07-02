@@ -49,6 +49,7 @@ function createWidget() {
     y: workArea.y + workArea.height - WIDGET_H - MARGIN,
     frame: false, resizable: false, maximizable: false, fullscreenable: false,
     alwaysOnTop: true, title: 'Mochi', show: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), spellcheck: false },
   });
   widgetWin.setAlwaysOnTop(true, 'screen-saver');
   widgetWin.setMenu(null);
@@ -126,7 +127,24 @@ function updateTray() {
   if (!isQuitting && app.isReady()) {
     debouncedSave({ lastModes: { widget: !!widgetWin, walker: !!walkerWin, buddy: !!buddyWin } });
   }
+  broadcastModes();
 }
+
+// ---- in-app mode control panel (widget) — the friendly alternative to
+// hunting for the system tray icon ----
+function currentModes() { return { widget: !!widgetWin, walker: !!walkerWin, buddy: !!buddyWin }; }
+function broadcastModes() {
+  const modes = currentModes();
+  for (const w of [widgetWin, walkerWin, buddyWin]) {
+    if (w && !w.isDestroyed()) w.webContents.send('modes:changed', modes);
+  }
+}
+ipcMain.handle('modes:get', () => currentModes());
+ipcMain.on('modes:toggle', (_e, name) => {
+  if (name === 'walker') { walkerWin ? walkerWin.close() : createWalker(); }
+  else if (name === 'buddy') { buddyWin ? buddyWin.close() : createBuddy(); }
+  else if (name === 'widget') { widgetWin ? widgetWin.close() : createWidget(); }
+});
 function createTray() {
   tray = new Tray(path.join(__dirname, 'icon.png'));
   tray.setToolTip('Mochi — click for modes');

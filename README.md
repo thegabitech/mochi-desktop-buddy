@@ -22,25 +22,50 @@ original design made for this app.
 
 ## Architecture
 
-Same three-window structure as the original app, controlled from one system
-tray icon, but every window now renders **Mochi** via a shared animation
-engine instead of loading remote images:
+Three windows sharing one animation engine, controlled two ways: the system
+tray (original) and now an **in-app modes panel** in the widget itself (the
+🧩 button next to the close button) — click it to toggle Screen Walker and
+Desk Buddy on/off without ever touching the tray. No more hunting for a
+hidden icon; the widget is the hub.
 
 - `mascot.js` + `mascot.css` — the shared engine. One SVG, driven entirely by
-  CSS keyframes. States: `idle`, `walk`, `run`, `sit`, `sleep`, `tired`,
-  `eat`, `play`, `dance`, `fly`. No raster assets, nothing fetched over the
-  network, ever.
-- `widget.html` — the companion window (Feed / Pet / Dance / Play / Nap
-  buttons, stats, auto-sleep).
-- `walker.html` — transparent full-screen overlay; Mochi roams, does tricks,
-  flies on balloons, click-through everywhere except on her. **Drag her**
-  to reposition; she resumes roaming from the new spot.
-- `buddy.html` — small always-on-top window; Mochi sits and loafs, fully
-  **draggable**, resizable by scroll wheel, remembers her spot across
-  restarts.
-- `main.js` / `preload.js` — Electron shell: system tray with mode toggles,
-  single-instance lock, IPC-driven window dragging (cursor-follow loop in
-  the main process — smooth, DPI-proof), debounced settings persistence.
+  CSS keyframes — **26 states**: `idle`, `walk`, `run`, `sit`, `sleep`,
+  `tired`, `eat`, `play`, `dance`, `fly`, `wave`, `stretch`, `wink`, `dizzy`,
+  `curious`, `shy`, `excited`, `bored`, `laugh`, `nuzzle`, `music`, `read`,
+  `paint`, `cold`, `sunny`, `birthday`. No raster assets, nothing fetched
+  over the network, ever.
+  - **Gotcha this taught us:** a CSS `transform` (even via animation) fully
+    *replaces* an SVG `transform="translate(...)"` attribute rather than
+    composing with it. Every prop that needs both static positioning and its
+    own animation uses a static outer `<g>` (attribute-positioned) wrapping
+    an unpositioned inner `<g>` (CSS-animated) — see `mochi-bowl`/
+    `mochi-bowl-inner` for the pattern. Skipping this is what caused the
+    original "eating is laggy" bug (the chewing mouth and food bowl were
+    animating around the wrong transform origin, making them visibly jitter).
+- `widget.html` — the companion window: Feed / Pet / Dance / Play /
+  **Surprise** (samples the newer expressive states) / Nap buttons, stats,
+  auto-sleep, and the modes panel.
+- `walker.html` — transparent full-screen overlay; Mochi roams through all
+  26 states, flies on balloons, click-through everywhere except on her.
+  **Drag her** to reposition; she resumes roaming from the new spot.
+- `buddy.html` — small always-on-top window; Mochi sits and loafs through a
+  calm subset of states, fully **draggable**, resizable by scroll wheel,
+  remembers her spot across restarts.
+- `main.js` / `preload.js` — Electron shell: system tray *and* in-widget
+  modes panel (both drive the same `modes:get`/`modes:toggle` IPC, with
+  live-broadcast so either UI stays in sync with the other), single-instance
+  lock, IPC-driven window dragging (cursor-follow loop in the main process —
+  smooth, DPI-proof), debounced settings persistence.
+  - **Gotcha this taught us:** the widget window never had a `preload`
+    script wired up in `webPreferences` (walker/buddy did). The original
+    code always guarded every `window.pet` reference with a ternary
+    fallback, so this was invisible — until the modes panel called
+    `window.pet.getModes()` directly with no guard, which threw
+    `TypeError: Cannot read properties of undefined` on page load and
+    silently aborted the *entire* script before the Mochi sprite ever got
+    constructed. That was the real cause of the "blank widget" bug — always
+    give every `BrowserWindow` that talks to `window.pet` an explicit
+    `webPreferences.preload`, even if nothing seems to need it yet.
 
 ## Run it
 

@@ -53,16 +53,48 @@
   }
   body.electron { padding-top: 14px; }
   body.electron #titlebar { display: flex; }
-  #btn-close {
+  #btn-close, #btn-modes {
     -webkit-app-region: no-drag; width: 26px; height: 22px; padding: 0; border-radius: 6px;
     font-size: 13px; line-height: 1; background: transparent; box-shadow: none; opacity: 0.6;
   }
   #btn-close:hover { opacity: 1; background: rgba(220, 90, 90, 0.85); color: #fff; transform: none; box-shadow: none; }
+  #btn-modes:hover { opacity: 1; background: rgba(255, 255, 255, 0.35); transform: none; box-shadow: none; }
+  #titlebar .right { display: flex; gap: 2px; -webkit-app-region: no-drag; }
+
+  /* ---- modes panel: the friendly hub for switching between Mochi's windows ---- */
+  #modes-panel {
+    display: none; position: fixed; top: 28px; right: 6px; z-index: 20;
+    width: 220px; background: rgba(255,255,255,0.97); border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(90,84,102,0.28); padding: 10px; -webkit-app-region: no-drag;
+  }
+  body.electron.modes-open #modes-panel { display: block; }
+  #modes-panel .mp-title { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: #9089a0;
+    text-transform: uppercase; padding: 2px 4px 8px; }
+  .mode-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 9px; cursor: pointer; }
+  .mode-row:hover { background: rgba(120,105,150,.08); }
+  .mode-row .mr-emo { font-size: 18px; width: 22px; text-align: center; }
+  .mode-row .mr-txt { flex: 1; font-size: 12.5px; font-weight: 600; color: var(--ink); text-align: left; }
+  .mode-row .mr-sw { width: 34px; height: 19px; border-radius: 999px; background: #ddd6e8; position: relative; transition: background .15s; flex: none; }
+  .mode-row .mr-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .15s; }
+  .mode-row.on .mr-sw { background: #d98fc0; }
+  .mode-row.on .mr-sw::after { left: 17px; }
 </style>
 </head>
 <body>
 
-<div id="titlebar"><span>🐾 Mochi</span><button id="btn-close" title="Close">✕</button></div>
+<div id="titlebar">
+  <span>🐾 Mochi</span>
+  <div class="right">
+    <button id="btn-modes" title="Modes">🧩</button>
+    <button id="btn-close" title="Close">✕</button>
+  </div>
+</div>
+<div id="modes-panel">
+  <div class="mp-title">Mochi's windows</div>
+  <button class="mode-row" id="mr-walker" type="button"><span class="mr-emo">🚶</span><span class="mr-txt">Screen walker</span><span class="mr-sw"></span></button>
+  <button class="mode-row" id="mr-buddy" type="button"><span class="mr-emo">🐱</span><span class="mr-txt">Desk buddy</span><span class="mr-sw"></span></button>
+</div>
 
 <div id="stage"><div id="mochi-host"></div></div>
 
@@ -73,6 +105,7 @@
   <button id="btn-pet">❤️ Pet</button>
   <button id="btn-dance">💃 Dance</button>
   <button id="btn-play">🧶 Play</button>
+  <button id="btn-surprise">✨ Surprise</button>
   <button id="btn-nap">💤 Nap</button>
 </div>
 <div id="credit">Mochi is an original character &middot; 100% offline &middot; no external content</div>
@@ -85,12 +118,30 @@
   if (navigator.userAgent.includes('Electron')) {
     document.body.classList.add('electron');
     $('btn-close').addEventListener('click', () => window.pet ? window.pet.close() : window.close());
+
+    // ---- modes panel: the friendly hub for the walker/buddy windows ----
+    const btnModes = $('btn-modes'), mrWalker = $('mr-walker'), mrBuddy = $('mr-buddy');
+    function renderModes(modes) {
+      mrWalker.classList.toggle('on', !!modes.walker);
+      mrBuddy.classList.toggle('on', !!modes.buddy);
+    }
+    btnModes.addEventListener('click', () => document.body.classList.toggle('modes-open'));
+    document.addEventListener('pointerdown', e => {
+      if (document.body.classList.contains('modes-open') &&
+          !e.target.closest('#modes-panel') && !e.target.closest('#btn-modes')) {
+        document.body.classList.remove('modes-open');
+      }
+    });
+    mrWalker.addEventListener('click', () => window.pet.toggleMode('walker'));
+    mrBuddy.addEventListener('click', () => window.pet.toggleMode('buddy'));
+    window.pet.getModes().then(renderModes);
+    window.pet.onModesChanged(renderModes);
   }
 
   const stage = $('stage'), host = $('mochi-host');
   const statusEl = $('status'), statsEl = $('stats');
   const btnFeed = $('btn-feed'), btnPet = $('btn-pet'), btnDance = $('btn-dance');
-  const btnPlay = $('btn-play'), btnNap = $('btn-nap');
+  const btnPlay = $('btn-play'), btnSurprise = $('btn-surprise'), btnNap = $('btn-nap');
 
   const mochi = new MochiSprite(host, { size: 150 });
 
@@ -114,7 +165,7 @@
     statsEl.textContent = `🍪 ${stats.snacks} · ❤️ ${stats.pets} · 💃 ${stats.dances} · 🧶 ${stats.plays}`;
   }
   function setStatus(t) { statusEl.textContent = t; }
-  function setButtons(enabled) { [btnFeed, btnPet, btnDance, btnPlay].forEach(b => b.disabled = !enabled); }
+  function setButtons(enabled) { [btnFeed, btnPet, btnDance, btnPlay, btnSurprise].forEach(b => b.disabled = !enabled); }
 
   function goIdle(message) {
     busy = false;
@@ -190,13 +241,20 @@
     stats.snacks++; saveStats();
     doState('eat', 4000, '*nom nom nom*', 'Yum!! Thank you!');
   });
+  const DANCE_POOL = ['dance', 'excited', 'birthday'];
+  const PLAY_POOL = ['play', 'wave', 'wink', 'nuzzle'];
+  const SURPRISE_POOL = ['stretch', 'dizzy', 'curious', 'shy', 'bored', 'laugh', 'music', 'read', 'paint', 'cold', 'sunny'];
+
   btnDance.addEventListener('click', () => {
     stats.dances++; saveStats();
-    doState('dance', 5000, pick(['Dance party! 🎶', '*busts a move*', 'wiggle wiggle~']), '*takes a bow*');
+    doState(pick(DANCE_POOL), 5000, pick(['Dance party! 🎶', '*busts a move*', 'wiggle wiggle~']), '*takes a bow*');
   });
   btnPlay.addEventListener('click', () => {
     stats.plays++; saveStats();
-    doState('play', 5000, pick(['Play time! 🧶', 'batter batter!', 'pounce pounce']), 'That was fun!');
+    doState(pick(PLAY_POOL), 5000, pick(['Play time! 🧶', 'batter batter!', 'pounce pounce']), 'That was fun!');
+  });
+  btnSurprise.addEventListener('click', () => {
+    doState(pick(SURPRISE_POOL), 5000, pick(['✨ Surprise!', 'ta-da~', 'watch this!']), '*curtsies*');
   });
   btnNap.addEventListener('click', () => { sleeping ? wake() : sleep('Nap time… 💤'); });
 
