@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mochi</title>
+<link rel="stylesheet" href="mascot.css">
+<style>
+  :root { --bg1: #fdf3f7; --bg2: #ece8fb; --ink: #5a5466; }
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    color: var(--ink);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; transition: background 1.2s;
+  }
+  body.sleeping { background: linear-gradient(160deg, #3b3a52, #23223a); color: #cfc9e8; }
+
+  #stage {
+    position: relative; width: min(300px, 94vw); aspect-ratio: 4 / 3;
+    background: #fff; border-radius: 18px;
+    box-shadow: 0 6px 18px rgba(90, 84, 102, 0.18);
+    overflow: hidden; cursor: pointer; transition: background 1.2s;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;
+  }
+  body.sleeping #stage { background: #2e2d45; }
+  #mochi-host { position: relative; }
+
+  .mochi-float-particle { z-index: 5; }
+
+  #status { height: 22px; font-size: 14px; font-weight: 600; letter-spacing: 0.2px; text-align: center; }
+  #stats { font-size: 12px; opacity: 0.65; }
+
+  #buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 4px; max-width: min(320px, 96vw); }
+  button {
+    border: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-family: inherit; font-weight: 600;
+    color: var(--ink); background: rgba(255, 255, 255, 0.75); box-shadow: 0 2px 6px rgba(90, 84, 102, 0.18);
+    cursor: pointer; transition: transform 0.12s, box-shadow 0.12s;
+  }
+  button:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(90, 84, 102, 0.25); }
+  button:active { transform: translateY(0) scale(0.96); }
+  button:disabled { opacity: 0.5; cursor: default; transform: none; }
+  body.sleeping button { background: rgba(255, 255, 255, 0.14); color: #cfc9e8; }
+
+  #credit { margin-top: 2px; font-size: 10px; opacity: 0.55; text-align: center; }
+
+  #titlebar {
+    display: none; position: fixed; top: 0; left: 0; right: 0; height: 28px;
+    align-items: center; justify-content: space-between; padding: 0 4px 0 12px;
+    font-size: 12px; font-weight: 600; -webkit-app-region: drag; z-index: 10;
+  }
+  body.electron { padding-top: 14px; }
+  body.electron #titlebar { display: flex; }
+  #btn-close {
+    -webkit-app-region: no-drag; width: 26px; height: 22px; padding: 0; border-radius: 6px;
+    font-size: 13px; line-height: 1; background: transparent; box-shadow: none; opacity: 0.6;
+  }
+  #btn-close:hover { opacity: 1; background: rgba(220, 90, 90, 0.85); color: #fff; transform: none; box-shadow: none; }
+</style>
+</head>
+<body>
+
+<div id="titlebar"><span>🐾 Mochi</span><button id="btn-close" title="Close">✕</button></div>
+
+<div id="stage"><div id="mochi-host"></div></div>
+
+<div id="status">Hi, I'm Mochi!</div>
+<div id="stats"></div>
+<div id="buttons">
+  <button id="btn-feed">🍪 Feed</button>
+  <button id="btn-pet">❤️ Pet</button>
+  <button id="btn-dance">💃 Dance</button>
+  <button id="btn-play">🧶 Play</button>
+  <button id="btn-nap">💤 Nap</button>
+</div>
+<div id="credit">Mochi is an original character &middot; 100% offline &middot; no external content</div>
+
+<script src="mascot.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  if (navigator.userAgent.includes('Electron')) {
+    document.body.classList.add('electron');
+    $('btn-close').addEventListener('click', () => window.pet ? window.pet.close() : window.close());
+  }
+
+  const stage = $('stage'), host = $('mochi-host');
+  const statusEl = $('status'), statsEl = $('stats');
+  const btnFeed = $('btn-feed'), btnPet = $('btn-pet'), btnDance = $('btn-dance');
+  const btnPlay = $('btn-play'), btnNap = $('btn-nap');
+
+  const mochi = new MochiSprite(host, { size: 150 });
+
+  const IDLE_SLEEP_MS = 90000;
+  let sleeping = false, busy = false;
+  let idleTimer, stateTimer, zzzTimer;
+
+  let stats;
+  try { stats = JSON.parse(localStorage.getItem('mochi-stats')) || {}; }
+  catch { stats = {}; }
+  for (const k of ['pets', 'snacks', 'dances', 'plays']) stats[k] = stats[k] || 0;
+
+  const idleLines = [
+    'Mochi is vibing ✨', '*tail swish*', 'thinking about snacks…',
+    'Mochi is keeping you company', '*soft purring*', 'mrrp?',
+  ];
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  function saveStats() {
+    localStorage.setItem('mochi-stats', JSON.stringify(stats));
+    statsEl.textContent = `🍪 ${stats.snacks} · ❤️ ${stats.pets} · 💃 ${stats.dances} · 🧶 ${stats.plays}`;
+  }
+  function setStatus(t) { statusEl.textContent = t; }
+  function setButtons(enabled) { [btnFeed, btnPet, btnDance, btnPlay].forEach(b => b.disabled = !enabled); }
+
+  function goIdle(message) {
+    busy = false;
+    mochi.setState('idle');
+    setButtons(true);
+    if (message) setStatus(message);
+    resetIdle();
+  }
+
+  function doState(state, durationMs, statusText, doneText) {
+    if (sleeping) wake();
+    clearTimeout(stateTimer);
+    busy = true;
+    mochi.setState(state);
+    setButtons(false);
+    setStatus(statusText);
+    resetIdle();
+    stateTimer = setTimeout(() => goIdle(doneText), durationMs);
+  }
+
+  function sleep(reason) {
+    if (sleeping) return;
+    clearTimeout(stateTimer);
+    sleeping = true; busy = false;
+    document.body.classList.add('sleeping');
+    setButtons(false);
+    btnNap.textContent = '☀️ Wake';
+    mochi.setState('sleep');
+    setStatus(reason || 'Mochi fell asleep… 💤');
+  }
+
+  function wake() {
+    if (!sleeping) return;
+    sleeping = false;
+    document.body.classList.remove('sleeping');
+    btnNap.textContent = '💤 Nap';
+    goIdle('*stretches* Good morning!');
+  }
+
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    if (!sleeping) {
+      idleTimer = setTimeout(() => {
+        doState('tired', 4000, '*yawn*… so sleepy');
+        clearTimeout(stateTimer);
+        stateTimer = setTimeout(() => sleep(), 4000);
+      }, IDLE_SLEEP_MS);
+    }
+  }
+
+  let lastPet = 0;
+  function petAction(x, y) {
+    if (sleeping) { wake(); return; }
+    const now = Date.now();
+    if (now - lastPet < 250) return;
+    lastPet = now;
+    stats.pets++; saveStats();
+    mochi.pet(() => mochiSpawnParticle(stage, Math.random() < 0.8 ? '❤️' : '💕', x, y));
+    if (!busy) setStatus(pick(['purr purr~', '*happy wiggle*', 'Mochi loves you!', 'more pets please']));
+    resetIdle();
+  }
+
+  stage.addEventListener('pointerdown', e => {
+    const r = stage.getBoundingClientRect();
+    petAction(e.clientX - r.left, e.clientY - r.top);
+  });
+  btnPet.addEventListener('click', () => {
+    const r = stage.getBoundingClientRect();
+    petAction(r.width / 2 + (Math.random() * 60 - 30), r.height / 3);
+  });
+
+  btnFeed.addEventListener('click', () => {
+    stats.snacks++; saveStats();
+    doState('eat', 4000, '*nom nom nom*', 'Yum!! Thank you!');
+  });
+  btnDance.addEventListener('click', () => {
+    stats.dances++; saveStats();
+    doState('dance', 5000, pick(['Dance party! 🎶', '*busts a move*', 'wiggle wiggle~']), '*takes a bow*');
+  });
+  btnPlay.addEventListener('click', () => {
+    stats.plays++; saveStats();
+    doState('play', 5000, pick(['Play time! 🧶', 'batter batter!', 'pounce pounce']), 'That was fun!');
+  });
+  btnNap.addEventListener('click', () => { sleeping ? wake() : sleep('Nap time… 💤'); });
+
+  setInterval(() => { if (!sleeping && !busy) setStatus(pick(idleLines)); }, 22000);
+
+  saveStats();
+  setButtons(false);
+  mochi.setState('idle');
+  setStatus('Hi, I\'m Mochi!');
+  resetIdle();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* Mochi — original animated mascot. Pure CSS/SVG, zero raster assets, zero network calls. */
+
+.mochi-sprite { display: block; overflow: visible; -webkit-user-drag: none; user-select: none; }
+.mochi-sprite.flip { transform: scaleX(-1); }
+
+/* ---------- idle breathing (always running, all states) ---------- */
+.mochi-body-group {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: mochi-breathe 3s ease-in-out infinite;
+}
+@keyframes mochi-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.02); } }
+
+/* ---------- tail ---------- */
+.mochi-tail { transform-box: fill-box; transform-origin: 10% 60%; animation: mochi-tail-idle 3.4s ease-in-out infinite; }
+@keyframes mochi-tail-idle { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-6deg); } }
+.mochi-sprite.walk .mochi-tail, .mochi-sprite.run .mochi-tail { animation: mochi-tail-wag 0.5s ease-in-out infinite; }
+@keyframes mochi-tail-wag { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-10deg); } }
+.mochi-sprite.fly .mochi-tail { animation: mochi-tail-flow 1.6s ease-in-out infinite; }
+@keyframes mochi-tail-flow { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(4deg); } }
+.mochi-sprite.sleep .mochi-tail { animation: none; transform: rotate(10deg); }
+
+/* ---------- ears (random twitch class toggled by JS) ---------- */
+.mochi-ear { transform-box: fill-box; transform-origin: 50% 100%; }
+.mochi-ear.twitch { animation: mochi-ear-twitch 0.5s ease-in-out; }
+@keyframes mochi-ear-twitch { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-10deg); } 70% { transform: rotate(6deg); } }
+
+/* ---------- eyes / blink ---------- */
+.mochi-eye-open { transform-box: fill-box; transform-origin: center; animation: mochi-blink 4.2s infinite; }
+@keyframes mochi-blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+.mochi-eye-closed { display: none; }
+.mochi-sprite.sleep .mochi-eye-open { display: none; }
+.mochi-sprite.sleep .mochi-eye-closed { display: block; }
+
+/* ---------- legs / walk cycle ---------- */
+.mochi-leg { transform-box: fill-box; transform-origin: 50% 0%; }
+.mochi-sprite.walk .mochi-leg.l, .mochi-sprite.run .mochi-leg.r { animation: mochi-step 0.5s ease-in-out infinite; }
+.mochi-sprite.walk .mochi-leg.r, .mochi-sprite.run .mochi-leg.l { animation: mochi-step 0.5s ease-in-out infinite 0.25s; }
+.mochi-sprite.run .mochi-leg.l, .mochi-sprite.run .mochi-leg.r { animation-duration: 0.26s; }
+@keyframes mochi-step { 0%, 100% { transform: rotate(0deg) translateY(0); } 50% { transform: rotate(-14deg) translateY(-4px); } }
+
+/* whole-body waddle while moving */
+.mochi-sprite.walk .mochi-body-group { animation: mochi-waddle 0.5s ease-in-out infinite; }
+.mochi-sprite.run .mochi-body-group { animation: mochi-waddle 0.26s ease-in-out infinite; }
+@keyframes mochi-waddle { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(-2deg); } }
+
+/* ---------- flying ---------- */
+.mochi-balloons { display: none; }
+.mochi-sprite.fly .mochi-balloons { display: block; }
+.mochi-sprite.fly .mochi-body-group { animation: mochi-float 2.4s ease-in-out infinite; }
+@keyframes mochi-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+.mochi-balloon { transform-box: fill-box; transform-origin: 50% 100%; }
+.mochi-balloon.b1 { animation: mochi-bob-a 2.1s ease-in-out infinite; }
+.mochi-balloon.b2 { animation: mochi-bob-b 2.5s ease-in-out infinite; }
+.mochi-balloon.b3 { animation: mochi-bob-a 1.9s ease-in-out infinite .3s; }
+@keyframes mochi-bob-a { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
+@keyframes mochi-bob-b { 0%, 100% { transform: translateY(-4px) rotate(3deg); } 50% { transform: translateY(4px) rotate(-3deg); } }
+
+/* ---------- eating ---------- */
+.mochi-bowl { display: none; }
+.mochi-sprite.eat .mochi-bowl { display: block; animation: mochi-bowl-pop .3s ease; }
+@keyframes mochi-bowl-pop { 0% { transform: scale(0) translateY(10px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+.mochi-mouth-eat { display: none; }
+.mochi-sprite.eat .mochi-mouth-idle { display: none; }
+.mochi-sprite.eat .mochi-mouth-eat { display: block; animation: mochi-chew 0.4s ease-in-out infinite; }
+@keyframes mochi-chew { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
+
+/* ---------- playing (toy ball) ---------- */
+.mochi-toy { display: none; }
+.mochi-sprite.play .mochi-toy { display: block; animation: mochi-toy-bounce 0.55s ease-in-out infinite; }
+@keyframes mochi-toy-bounce { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-16px) rotate(80deg); } }
+.mochi-sprite.play .mochi-leg { animation: mochi-paw-bat 0.55s ease-in-out infinite; }
+@keyframes mochi-paw-bat { 0%, 60%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-22deg) translateY(-6px); } }
+.mochi-sprite.play .mochi-body-group { animation: mochi-pounce 0.55s ease-in-out infinite; }
+@keyframes mochi-pounce { 0%, 100% { transform: translateX(0) rotate(0deg); } 50% { transform: translateX(6px) rotate(-2deg); } }
+
+/* ---------- dancing ---------- */
+.mochi-sprite.dance .mochi-body-group { animation: mochi-dance 0.6s ease-in-out infinite; }
+@keyframes mochi-dance { 0%, 100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(6deg) translateY(-6px); } }
+.mochi-sprite.dance .mochi-leg { animation: mochi-dance-leg 0.6s ease-in-out infinite; }
+@keyframes mochi-dance-leg { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-16deg); } }
+
+/* ---------- sitting / standing (calm, default resting look) ---------- */
+.mochi-sprite.sit .mochi-body-group { animation: mochi-breathe 3.6s ease-in-out infinite; }
+
+/* ---------- tired ---------- */
+.mochi-sprite.tired .mochi-eye-open { animation: mochi-droopy 1.4s ease-in-out infinite; }
+@keyframes mochi-droopy { 0%, 100% { transform: scaleY(0.55); } 50% { transform: scaleY(0.15); } }
+
+/* ---------- sleep zzz ---------- */
+.mochi-zzz { display: none; }
+.mochi-sprite.sleep .mochi-zzz { display: block; }
+.mochi-zzz text { animation: mochi-zzz-float 2.4s ease-out infinite; opacity: 0; }
+.mochi-zzz text.z2 { animation-delay: .8s; }
+.mochi-zzz text.z3 { animation-delay: 1.6s; }
+@keyframes mochi-zzz-float {
+  0% { opacity: 0; transform: translate(0,0) scale(.6); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(10px,-26px) scale(1.15); }
+}
+
+/* ---------- love / pet squish ---------- */
+.mochi-sprite.squish .mochi-body-group { animation: mochi-squish .35s ease; }
+@keyframes mochi-squish { 0%, 100% { transform: scale(1,1); } 45% { transform: scale(1.06,0.92); } }
+
+/* ---------- floating emoji particles (hearts/sparkles), spawned by JS ---------- */
+.mochi-float-particle {
+  position: absolute; pointer-events: none; font-size: 20px;
+  animation: mochi-particle-up 1.4s ease-out forwards;
+}
+@keyframes mochi-particle-up {
+  0% { opacity: 0; transform: translateY(4px) scale(.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-42px) scale(1.15) rotate(8deg); }
+}

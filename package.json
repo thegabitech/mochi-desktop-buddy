@@ -1,0 +1,51 @@
+{
+  "name": "mochi-desktop-buddy",
+  "productName": "Mochi",
+  "version": "1.0.0",
+  "description": "Mochi — an original animated desktop cat companion. Fully offline, no external content.",
+  "author": "Gabriel",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder --win dir",
+    "installer": "electron-builder --win nsis",
+    "msix": "electron-builder --win appx"
+  },
+  "build": {
+    "appId": "com.gabriel.mochi-desktop-buddy",
+    "productName": "Mochi",
+    "directories": { "output": "release" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "mascot.js",
+      "mascot.css",
+      "widget.html",
+      "walker.html",
+      "buddy.html",
+      "icon.png",
+      "package.json"
+    ],
+    "win": { "target": ["nsis"], "icon": "icon-256.png", "signAndEditExecutable": false },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "artifactName": "Mochi-Setup-${version}.${ext}"
+    },
+    "appx": {
+      "applicationId": "Mochi",
+      "identityName": "12345Gabriel.MochiDesktopBuddy",
+      "publisher": "CN=00000000-0000-0000-0000-000000000000",
+      "publisherDisplayName": "Gabriel",
+      "displayName": "Mochi",
+      "backgroundColor": "transparent",
+      "languages": ["en-US"],
+      "artifactName": "Mochi-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

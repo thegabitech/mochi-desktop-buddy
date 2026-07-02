@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mochi Buddy</title>
+<link rel="stylesheet" href="mascot.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  #mochi-host {
+    position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    cursor: grab;
+  }
+  #mochi-host.dragging { cursor: grabbing; }
+  #hint {
+    position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+    padding: 4px 9px; font-family: "Segoe UI", system-ui, sans-serif; font-size: 11px; color: #fff;
+    background: rgba(60, 55, 75, 0.85); border-radius: 8px; white-space: nowrap;
+    pointer-events: none; transition: opacity 1s;
+  }
+</style>
+</head>
+<body>
+<div id="mochi-host"></div>
+<div id="hint">drag me · scroll = size · click = new pose · right-click = hide</div>
+
+<script src="mascot.js"></script>
+<script>
+(() => {
+  const host = document.getElementById('mochi-host');
+  const hint = document.getElementById('hint');
+  const mochi = new MochiSprite(host, { size: 130 });
+
+  const CALM = [
+    { st: 'sit', weight: 5 },
+    { st: 'idle', weight: 2 },
+    { st: 'sleep', weight: 2 },
+    { st: 'tired', weight: 1 },
+    { st: 'eat', weight: 1 },
+  ];
+  const pickCalm = () => {
+    const total = CALM.reduce((s, c) => s + c.weight, 0);
+    let r = Math.random() * total;
+    for (const c of CALM) { r -= c.weight; if (r <= 0) return c.st; }
+    return CALM[0].st;
+  };
+
+  let poseTimer = null, currentSt = null;
+  function setPose(st) { currentSt = st; mochi.setState(st); }
+  function nextPose() { setPose(pickCalm()); poseTimer = setTimeout(nextPose, 15000 + Math.random() * 30000); }
+
+  // ---- drag to move the window; a plain click cycles pose ----
+  let startX = 0, startY = 0, moved = false, down = false;
+  host.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    down = true; moved = false; startX = e.screenX; startY = e.screenY;
+    host.setPointerCapture(e.pointerId);
+    clearTimeout(poseTimer);
+    if (window.pet) window.pet.dragStart();
+  });
+  host.addEventListener('pointermove', e => {
+    if (!down || moved) return;
+    if (Math.hypot(e.screenX - startX, e.screenY - startY) > 6) { moved = true; host.classList.add('dragging'); }
+  });
+  function endDrag(e) {
+    if (!down) return;
+    down = false; host.classList.remove('dragging');
+    if (window.pet) window.pet.dragEnd();
+    if (!moved && e) {
+      let id; do { id = pickCalm(); } while (id === currentSt && CALM.length > 1);
+      setPose(id);
+      poseTimer = setTimeout(nextPose, 15000 + Math.random() * 30000);
+    } else {
+      poseTimer = setTimeout(nextPose, 5000 + Math.random() * 10000);
+    }
+  }
+  host.addEventListener('pointerup', endDrag);
+  host.addEventListener('pointercancel', () => endDrag(null));
+  host.addEventListener('contextmenu', e => { e.preventDefault(); if (window.pet) window.pet.close(); });
+
+  // ---- scroll over her = resize ----
+  const SIZE_MIN = 70, SIZE_MAX = 280;
+  let size = 130;
+  document.addEventListener('wheel', e => {
+    if (down) return;
+    size = Math.max(SIZE_MIN, Math.min(SIZE_MAX, size - Math.sign(e.deltaY) * 10));
+    mochi.setSize(size);
+    if (window.pet) window.pet.setBuddySize(size);
+  }, { passive: true });
+
+  // ---- start ----
+  if (window.pet) window.pet.getSettings().then(s => {
+    if (s && s.buddySize) { size = Math.max(SIZE_MIN, Math.min(SIZE_MAX, s.buddySize)); mochi.setSize(size); }
+  });
+  nextPose();
+  setTimeout(() => { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 1200); }, 6000);
+})();
+</script>
+</body>
+</html>
